@@ -54,19 +54,19 @@ def beam_search_generate(
 
     # 初始化 Beam Search 队列
     beam = [
-        (1.0, "", [], pinyin_input, ("", 1.0))
-    ]  # (prob, context, tokens, remaining_pinyin, (token_tail, token_tail_prob))
+        (1.0, "", pinyin_input, ("", 1.0))
+    ]  # (prob, context, remaining_pinyin, (token_tail, token_tail_prob))
 
-    final_candidates = []
+    final_candidates: List[Dict[float, str]] = []
 
     while beam:
         next_beam = []
-        for prob, context, tokens, remaining_pinyin, (
+        for prob, context, remaining_pinyin, (
             token_tail,
             token_tail_prob,
         ) in beam:
             if not remaining_pinyin:  # 如果拼音已经全部匹配完
-                final_candidates.append((prob, tokens))
+                final_candidates.append((prob, context))
                 continue
 
             print(context, token_tail, prob)
@@ -75,7 +75,6 @@ def beam_search_generate(
                 token_tail = token_tail[1:]  # 更新 token_tail
                 new_prob = token_tail_prob  # 使用 token_tail 的概率
                 new_context = context + token
-                new_tokens = tokens + [token]
 
                 # 检查拼音匹配
                 token_pinyin = lazy_pinyin(token)
@@ -86,7 +85,6 @@ def beam_search_generate(
                         (
                             new_prob,
                             new_context,
-                            new_tokens,
                             new_remaining_pinyin,
                             (token_tail, token_tail_prob),
                         ),
@@ -97,7 +95,6 @@ def beam_search_generate(
                         (
                             new_prob,
                             new_context,
-                            new_tokens,
                             new_remaining_pinyin,
                             (token_tail, token_tail_prob),
                         ),
@@ -124,7 +121,6 @@ def beam_search_generate(
                 token_prob = top_probs[0, i].item()
                 new_prob = prob * token_prob  # 累乘概率
                 new_context = context + token[0]
-                new_tokens = tokens + [token[0]]
                 new_token_tail = token[1:]  # 提取 token 的剩余部分
 
                 # 检查拼音匹配
@@ -136,7 +132,6 @@ def beam_search_generate(
                         (
                             new_prob,
                             new_context,
-                            new_tokens,
                             new_remaining_pinyin,
                             (new_token_tail, token_prob),
                         ),
@@ -149,7 +144,7 @@ def beam_search_generate(
     # 提取最终候选词
     candidates = []
     for prob, tokens in final_candidates:
-        candidates.append({"word": "".join(tokens), "score": prob})
+        candidates.append({"word": tokens, "score": prob})
 
     # 按得分排序并返回 Top-K
     candidates.sort(key=lambda x: x["score"], reverse=True)
