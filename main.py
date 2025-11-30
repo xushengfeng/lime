@@ -47,7 +47,7 @@ def keys_to_pinyin(keys: str) -> str:
 
 # 使用 Beam Search 生成候选词，拼音拆分基于候选词
 def beam_search_generate(
-    pinyin_input: str, max_beam_w=7, min_beam_w=2, top_k: int = 10
+    pinyin_input: str, max_beam_w=7, min_beam_w=2, top_k: int = 10, pre_str=""
 ) -> List[Candidate]:
     """
     使用 Beam Search 生成候选词，逐步匹配拼音。
@@ -58,7 +58,6 @@ def beam_search_generate(
     :return: 候选词列表
     """
     prompt = get_context()
-    inputs = tokenizer(prompt, return_tensors="pt")
 
     # 初始化 Beam Search 队列
     beam: BeamList = [
@@ -82,8 +81,9 @@ def beam_search_generate(
                 continue
 
             model_count += 1
-            inputs = tokenizer(prompt + context, return_tensors="pt")
-            print("runmodel", prompt + context)
+            pm = prompt + pre_str + context
+            inputs = tokenizer(pm, return_tensors="pt")
+            print("runmodel", pm)
             with torch.no_grad():
                 outputs = model(**inputs)
                 logits = outputs.logits[:, -1, :]
@@ -193,5 +193,6 @@ def add_to_beam(
     if len(next_beam) > limit:
         next_beam.pop()
     return True
+
 
 print("初始化完毕")
