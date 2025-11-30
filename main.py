@@ -100,12 +100,12 @@ def beam_search_generate(
                     break
                 new_prob = prob * token_prob  # 累乘概率
 
-                if len(next_beam) == bw:
-                    if new_prob < next_beam[-1][0]:
-                        break
-
                 token_id = top_indices[0, i].item()
                 token: str = tokenizer.decode([token_id])
+                if len(next_beam) == bw:
+                    if new_prob < next_beam[-1][0] and len(token) == 1:
+                        break
+
                 if len(token) < 1:
                     continue
                 if token.startswith("\t"):
@@ -139,8 +139,6 @@ def beam_search_generate(
                             else 0
                         )
 
-        # 按概率排序并截取 Beam Width 个最优结果
-        next_beam.sort(key=lambda x: x[0], reverse=True)  # 按概率从高到低排序
         print(next_beam)
         beam = next_beam
 
@@ -181,7 +179,7 @@ def add_to_beam(
     将新路径添加到 Beam
     """
     if len(next_beam) == limit:
-        if new_prob < next_beam[-1][0]:
+        if new_prob < next_beam[-1][0] and len(tk[0][0]) == 1:
             return False
 
     print(new_prob, new_context, new_remaining_pinyin, tk, new_matched_pinyin)
@@ -195,7 +193,8 @@ def add_to_beam(
         )
     )
     if len(next_beam) >= limit:
-        next_beam.sort(key=lambda x: x[0], reverse=True)
+        # 长的优先，然后是prob，但这样的还是有点粗糙
+        next_beam.sort(key=lambda x: (len(x[1]), x[0]), reverse=True)
     if len(next_beam) > limit:
         next_beam.pop()
     return True
