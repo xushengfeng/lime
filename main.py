@@ -1,4 +1,3 @@
-from turtle import Turtle
 from flask import Flask, request, jsonify
 from pypinyin import lazy_pinyin
 from transformers import AutoTokenizer, AutoModelForCausalLM
