@@ -10,10 +10,12 @@ class Candidate(TypedDict):
     pinyin: List[str]
 
 
-BeamList = List[Tuple[float, str, str, List[Tuple[str, float]], List[str]]]
+BeamList = List[Tuple[float, str, str, List[Tuple[str, float, int]], List[str]]]
 
 # 加载模型和分词器
 model_name = "Qwen/Qwen3-0.6B"  # 或您使用的模型
+model_name = "../gemma-3-270m"
+
 print("加载模型", model_name)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
@@ -132,7 +134,7 @@ def beam_search_generate(
                                 new_prob,
                                 new_context,
                                 new_remaining_pinyin,
-                                ltk + [(token, token_prob)],
+                                ltk + [(token, token_prob, i)],
                                 matched_pinyin + token_pinyin,
                                 bw,
                             )
@@ -171,7 +173,7 @@ def add_to_beam(
     new_prob: float,
     new_context: str,
     new_remaining_pinyin: str,
-    tk: List[Tuple[str, float]],
+    tk: List[Tuple[str, float, int]],
     new_matched_pinyin: List[str],
     limit: int,
 ):
