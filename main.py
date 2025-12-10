@@ -1,6 +1,7 @@
 from pypinyin import lazy_pinyin
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
+from llama_cpp import Llama
+import numpy as np
+
 from typing import List, Dict, Tuple, TypedDict
 
 
@@ -12,28 +13,23 @@ class Candidate(TypedDict):
 
 BeamList = List[Tuple[float, str, str, List[Tuple[str, float, int]], List[str]]]
 
-# 加载模型和分词器
-model_name = "Qwen/Qwen3-0.6B"  # 或您使用的模型
-model_name = "../gemma-3-270m"
-
+model_name = "../Qwen2-0.5B-Instruct-GGUF/qwen2-0_5b-instruct-q4_0.gguf"
 print("加载模型", model_name)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
+
+llm = Llama(model_path=model_name, verbose=True, logits_all=True)
 print("加载完成")
 
 print("创建拼音索引")
 
+token_pinyin_map: Dict[int, List[str]] = {}
 
-def generate_token_pinyin_map(tokenizer):
-    token_pinyin_map: Dict[int, List[str]] = {}
-    for token_id in range(tokenizer.vocab_size):
-        token = tokenizer.decode([token_id]).strip()
-        if token:
-            token_pinyin_map[token_id] = lazy_pinyin(token)
-    return token_pinyin_map
-
-
-token_pinyin_map = generate_token_pinyin_map(tokenizer)
+for token_id in range(llm.n_vocab()):
+    try:
+        token = llm.detokenize([token_id]).decode()
+    except:
+        continue
+    if token:
+        token_pinyin_map[token_id] = lazy_pinyin(token)
 
 # 上下文存储
 pre_context = "下面的内容主题多样并且没有标点"
@@ -47,9 +43,35 @@ def keys_to_pinyin(keys: str) -> str:
     return keys
 
 
+def softmax(x: np.ndarray) -> np.ndarray:
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
+
+
+def get_top_k_logits_numpy(logits: np.ndarray, k: int) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    返回 (probs, indices)：对选中的 logits 做 softmax 并返回对应的索引（按 logits 降序）。
+    :param logits: 一维 numpy 数组
+    :param k: 取 top-k 的大小
+    :return: (probs, indices)
+    """
+    logits = np.asarray(logits)
+    n = logits.size
+
+    if k >= n:
+        sorted_indices = np.argsort(logits)[::-1]
+        selected_logits = logits[sorted_indices]
+        return softmax(selected_logits), sorted_indices
+
+    top_k_indices = np.argpartition(logits, -k)[-k:]
+    top_k_indices = top_k_indices[np.argsort(logits[top_k_indices])[::-1]]
+    selected_logits = logits[top_k_indices]
+    return softmax(selected_logits), top_k_indices
+
+
 # 使用 Beam Search 生成候选词，拼音拆分基于候选词
 def beam_search_generate(
-    pinyin_input: str, max_beam_w=7, min_beam_w=2, top_k: int = 10, pre_str=""
+    pinyin_input: str, max_beam_w=7, min_beam_w=4, top_k: int = 10, pre_str=""
 ) -> List[Candidate]:
     """
     使用 Beam Search 生成候选词，逐步匹配拼音。
@@ -84,26 +106,33 @@ def beam_search_generate(
 
             model_count += 1
             pm = prompt + pre_str + context
-            inputs = tokenizer(pm, return_tensors="pt")
+            inputs = llm.tokenize(pm.encode())
             print("runmodel", pm)
-            with torch.no_grad():
-                outputs = model(**inputs)
-                logits = outputs.logits[:, -1, :]
 
-            probabilities = torch.softmax(logits, dim=-1)
-            tk = min(10**5, logits.size(-1))
-            top_probs, top_indices = torch.topk(probabilities, tk)
+            llm.reset()
+            llm.eval(inputs)
+
+            logits_array = llm._scores[-1]
+
+            logits = np.array(logits_array)
+
+            tk = min(10**5, logits.size)
+
+            top_probs, top_indices = get_top_k_logits_numpy(logits, tk)
 
             bw = max_beam_w if run_count == 1 else min_beam_w
 
             for i in range(tk):
-                token_prob = top_probs[0, i].item()
+                token_prob = top_probs[i]
                 if token_prob < 10**-10:
                     break
                 new_prob = prob * token_prob  # 累乘概率
 
-                token_id = top_indices[0, i].item()
-                token: str = tokenizer.decode([token_id])
+                token_id = top_indices[i]
+                try:
+                    token: str = llm.detokenize([token_id]).decode()
+                except:
+                    continue
                 if len(next_beam) == bw:
                     if new_prob < next_beam[-1][0] and len(token) == 1:
                         break
