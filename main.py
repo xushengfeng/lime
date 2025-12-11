@@ -2,20 +2,29 @@ from pypinyin import lazy_pinyin
 from llama_cpp import Llama
 import numpy as np
 
-from typing import List, Dict, Tuple, TypedDict
+from typing import List, Dict, Set, Tuple, TypedDict
+
+
+class PinyinAndKey(TypedDict):
+    py: str
+    key: str
+
+
+PinyinL = List[PinyinAndKey]  # 之后会有多选
+Pinyin = List[str]
 
 
 class Candidate(TypedDict):
     word: str
     score: float
-    pinyin: List[str]
+    pinyin: Pinyin
 
 
 BeamList = List[
     Tuple[
         float,  # prob
         str,  # context
-        str,  # remaining_pinyin
+        PinyinL,  # remaining_pinyin
         List[  # 过程分词
             Tuple[
                 str,  # 词
@@ -23,7 +32,7 @@ BeamList = List[
                 int,  # 索引
             ]
         ],
-        List[str],  # matched_pinyin
+        Pinyin,  # matched_pinyin
     ]
 ]
 model_name = "../Qwen2-0.5B-Instruct-GGUF/qwen2-0_5b-instruct-q4_0.gguf"
@@ -35,6 +44,7 @@ print("加载完成")
 print("创建拼音索引")
 
 token_pinyin_map: Dict[int, List[str]] = {}
+first_pinyin_token: Dict[str, Set[int]] = {}
 
 for token_id in range(llm.n_vocab()):
     try:
@@ -42,7 +52,14 @@ for token_id in range(llm.n_vocab()):
     except:
         continue
     if token:
-        token_pinyin_map[token_id] = lazy_pinyin(token)
+        py = lazy_pinyin(token)
+        token_pinyin_map[token_id] = py
+
+        fp = py[0]
+        s = first_pinyin_token[fp] if fp in first_pinyin_token else set()
+        s.add(token_id)
+        first_pinyin_token[fp] = s
+
 
 # 上下文存储
 pre_context = "下面的内容主题多样并且没有标点"
@@ -50,10 +67,12 @@ user_context = []
 
 
 # 按键转拼音
-def keys_to_pinyin(keys: str) -> str:
+def keys_to_pinyin(keys: str) -> PinyinL:
     # 示例：将按键直接映射为拼音（实际可根据需求扩展）
     # 比如双拼、模糊
-    return keys
+    return list(
+        map(lambda x: PinyinAndKey(key=x, py=x), keys.split(" "))
+    )  # 这里用空格辅助，实际上应该自动拆分
 
 
 def softmax(x: np.ndarray) -> np.ndarray:
@@ -74,17 +93,17 @@ def get_top_k_logits_numpy(logits: np.ndarray, k: int) -> Tuple[np.ndarray, np.n
     if k >= n:
         sorted_indices = np.argsort(logits)[::-1]
         selected_logits = logits[sorted_indices]
-        return softmax(selected_logits), sorted_indices
+        return selected_logits, sorted_indices
 
     top_k_indices = np.argpartition(logits, -k)[-k:]
     top_k_indices = top_k_indices[np.argsort(logits[top_k_indices])[::-1]]
     selected_logits = logits[top_k_indices]
-    return softmax(selected_logits), top_k_indices
+    return selected_logits, top_k_indices
 
 
 # 使用 Beam Search 生成候选词，拼音拆分基于候选词
 def beam_search_generate(
-    pinyin_input: str, max_beam_w=7, min_beam_w=4, top_k: int = 10, pre_str=""
+    pinyin_input: PinyinL, max_beam_w=7, min_beam_w=4, top_k: int = 10, pre_str=""
 ) -> List[Candidate]:
     """
     使用 Beam Search 生成候选词，逐步匹配拼音。
@@ -135,13 +154,20 @@ def beam_search_generate(
 
             bw = max_beam_w if run_count == 1 else min_beam_w
 
-            for i in range(tk):
+            firstPinyin = remaining_pinyin[0].get("py")
+            ftokenid = first_pinyin_token.get(firstPinyin)
+            if ftokenid == None:
+                ftokenid = set()
+
+            for i in range(top_indices.size):
                 token_prob = top_probs[i]
                 if token_prob < 10**-10:
                     break
                 new_prob = prob * token_prob  # 累乘概率
 
                 token_id = top_indices[i]
+                if not (token_id in ftokenid):
+                    continue
                 try:
                     token: str = llm.detokenize([token_id]).decode()
                 except:
@@ -163,11 +189,19 @@ def beam_search_generate(
                 token_pinyin = token_pinyin_map.get(int(token_id))
                 if not (token_pinyin):
                     continue
-                token_pinyin_str = "".join(token_pinyin)
+
                 check_count += 1
-                if remaining_pinyin.startswith(token_pinyin_str):
+                pyeq = True
+                for [_i, p] in enumerate(token_pinyin):
+                    if len(remaining_pinyin) <= _i:
+                        pyeq = False
+                        break
+                    if remaining_pinyin[_i]["py"] != p:
+                        pyeq = False
+                        break
+                if pyeq:
                     if token != token_pinyin[0]:
-                        new_remaining_pinyin = remaining_pinyin[len(token_pinyin_str) :]
+                        new_remaining_pinyin = remaining_pinyin[len(token_pinyin) :]
 
                         add_count += (
                             1
@@ -214,7 +248,7 @@ def add_to_beam(
     next_beam: BeamList,
     new_prob: float,
     new_context: str,
-    new_remaining_pinyin: str,
+    new_remaining_pinyin: PinyinL,
     tk: List[Tuple[str, float, int]],
     new_matched_pinyin: List[str],
     limit: int,

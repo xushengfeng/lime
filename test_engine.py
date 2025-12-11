@@ -11,7 +11,7 @@ def test_text_offset(test_text: str):
     print(f"测试文本: {test_text}")
 
     # 转换为拼音
-    pinyin_input = keys_to_pinyin("".join(lazy_pinyin(test_text)))
+    pinyin_input = keys_to_pinyin(" ".join(lazy_pinyin(test_text)))
     print(f"转换为拼音: {pinyin_input}")
 
     # 调用补全引擎生成候选词
