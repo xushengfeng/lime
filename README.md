@@ -10,6 +10,18 @@ llm 驱动的输入法。目前支持拼音。
 
 ## 运行
 
+### 安装依赖
+
+```shell
+uv sync
+```
+
+### 下载模型
+
+```shell
+git clone https://www.modelscope.cn/qwen/Qwen2-0.5B-Instruct-GGUF.git
+```
+
 ### 仅测试
 
 ```shell
