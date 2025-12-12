@@ -1,0 +1,69 @@
+schema:
+    schema_id: llm
+    name: "llm拼音"
+    version: "1.0"
+    author:
+        - xsf https://github.com/xushengfeng/
+    description: |
+        通过
+
+switches:
+    - name: ascii_mode
+      reset: 0
+      states: [中文, 西文]
+    - name: full_shape
+      states: [半角, 全角]
+    - name: simplification
+      reset: 1
+      states: [汉字, 汉字]
+
+engine:
+    processors:
+        - ascii_composer
+        - recognizer
+        - key_binder
+        - speller
+        - punctuator
+        - selector
+        - navigator
+        - express_editor
+    segmentors:
+        - ascii_segmentor
+        - matcher
+        - abc_segmentor
+        - punct_segmentor
+        - fallback_segmentor
+    translators:
+        - lua_translator@*cloud_pinyin_mspy*translator
+        - punct_translator
+        - reverse_lookup_translator
+
+translator:
+    dictionary: ""
+    prism: ""
+    enable_completion: false
+    enable_sentence: false
+    enable_user_dict: false
+    enable_encoder: false
+
+speller:
+    alphabet: zyxwvutsrqponmlkjihgfedcba
+    initials: "abcdefghijklmnopqrstuvwxyz;"
+    delimiter: " '"
+    max_code_length: 0
+
+punctuator:
+    import_preset: default
+
+key_binder:
+    import_preset: default
+
+recognizer:
+    import_preset: default
+    patterns:
+        punct: "^/([0-9]0?)$"
+        reverse_lookup: "`[a-z]*'?$"
+
+menu:
+    page_size: 5
+    horizontal: true

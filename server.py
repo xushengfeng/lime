@@ -109,8 +109,13 @@ def commit_text_post() -> Dict[str, List[str]]:
     commit(text)
     # 更新用户上下文
     user_context.append(text)
+    print("".join(user_context)[-20:])
 
-    return jsonify({"message": "Text committed successfully", "context": user_context})  # type: ignore
+    return jsonify(
+        {
+            "message": "Text committed successfully",
+        }
+    )  # type: ignore
 
 
 # API: 提交文字 - GET 方法
@@ -127,8 +132,13 @@ def commit_text_get() -> Dict[str, List[str]]:
     commit(text)
     # 更新用户上下文
     user_context.append(text)
+    print("".join(user_context)[-20:])
 
-    return jsonify({"message": "Text committed successfully", "context": user_context})  # type: ignore
+    return jsonify(
+        {
+            "message": "Text committed successfully",
+        }
+    )  # type: ignore
 
 
 # API: 清除上下文 - GET 方法
