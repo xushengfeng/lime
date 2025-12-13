@@ -1,5 +1,5 @@
 import math
-from pypinyin import lazy_pinyin
+from pypinyin import Style, lazy_pinyin, pinyin
 from llama_cpp import Llama
 import numpy as np
 import threading
@@ -73,7 +73,7 @@ print("加载完成")
 
 print("创建拼音索引")
 
-token_pinyin_map: Dict[int, List[str]] = {}
+token_pinyin_map: Dict[int, List[List[str]]] = {}
 first_pinyin_token: Dict[str, Set[int]] = {}
 pinyin_k: Set[str] = set()
 
@@ -83,13 +83,12 @@ for token_id in range(llm.n_vocab()):
     except:
         continue
     if token:
-        py = lazy_pinyin(token)
-        token_pinyin_map[token_id] = py
-
-        fp = py[0]
-        s = first_pinyin_token[fp] if fp in first_pinyin_token else set()
-        s.add(token_id)
-        first_pinyin_token[fp] = s
+        pys = pinyin(token, heteronym=True, style=Style.NORMAL)
+        token_pinyin_map[token_id] = pys
+        for fp in pys[0]:
+            s = first_pinyin_token[fp] if fp in first_pinyin_token else set()
+            s.add(token_id)
+            first_pinyin_token[fp] = s
 
         py2 = lazy_pinyin(token, errors="ignore")
         for i in py2:
@@ -349,19 +348,30 @@ def beam_search_generate(
                     continue
                 new_context = context + token
 
-                token_pinyin = token_pinyin_map.get(int(token_id))
-                if not (token_pinyin):
+                token_pinyin_dy = token_pinyin_map.get(int(token_id))
+
+                if not (token_pinyin_dy):
                     continue
 
                 check_count += 1
+                token_pinyin: List[str] = []
                 pyeq = True
-                for [_i, p] in enumerate(token_pinyin):
-                    if len(remaining_pinyin) <= _i:
-                        pyeq = False
-                        break
-                    if p not in map(lambda x: x["py"], remaining_pinyin[_i]):
-                        pyeq = False
-                        break
+                if len(pinyin_input) >= len(token_pinyin_dy):
+                    for [i, ps] in enumerate(token_pinyin_dy):
+                        input_posi = list(map(lambda x: x["py"], pinyin_input[i]))
+                        zi_posi = ps
+                        find_zi_eq = False
+                        for p in zi_posi:
+                            if p in input_posi:
+                                find_zi_eq = True
+                                token_pinyin.append(p)
+                                break
+                        if find_zi_eq == False:
+                            pyeq = False
+                            break
+                else:
+                    pyeq = False
+
                 if pyeq:
                     if token != token_pinyin[0]:
                         new_remaining_pinyin = remaining_pinyin[len(token_pinyin) :]
@@ -456,18 +466,28 @@ def single_ci(pinyin_input: PinyinL) -> Result:
         if token.startswith(" "):
             continue
 
-        token_pinyin = token_pinyin_map.get(int(token_id))
-        if not (token_pinyin):
-            continue
+        token_pinyin_dy = token_pinyin_map.get(int(token_id))
 
+        if not (token_pinyin_dy):
+            continue
+        token_pinyin: List[str] = []
         pyeq = True
-        for [_i, p] in enumerate(token_pinyin):
-            if len(pinyin_input) <= _i:
-                pyeq = False
-                break
-            if p not in map(lambda x: x["py"], pinyin_input[_i]):
-                pyeq = False
-                break
+        if len(pinyin_input) >= len(token_pinyin_dy):
+            for [i, ps] in enumerate(token_pinyin_dy):
+                input_posi = list(map(lambda x: x["py"], pinyin_input[i]))
+                zi_posi = ps
+                find_zi_eq = False
+                for p in zi_posi:
+                    if p in input_posi:
+                        find_zi_eq = True
+                        token_pinyin.append(p)
+                        break
+                if find_zi_eq == False:
+                    pyeq = False
+                    break
+        else:
+            pyeq = False
+
         if pyeq:
             if token != token_pinyin[0]:
                 rmpy = list(
