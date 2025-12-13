@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Set
 
 # 尝试创建所有拼音，即使现实中不存在，比如 len
 
@@ -60,6 +60,7 @@ finals = [
     "iong",
     "ua",
     "uo",
+    "ue",
     "uai",
     "uan",
     "uang",
@@ -148,7 +149,7 @@ invalid_combinations = {
 
 def generate_pinyin():
     """生成所有可能的拼音组合"""
-    pinyin_list: List[str] = []
+    pinyin_list: Set[str] = set()
 
     for initial in initials:
         for final in finals:
@@ -156,11 +157,10 @@ def generate_pinyin():
             if (initial, final) in invalid_combinations:
                 continue
 
-            # 特殊处理 y, w 作为声母的情况
-            if initial in ["y", "w"] and final in ["i", "u", "v"]:
-                continue
+            if initial in ["j", "q", "x", "y"] and final.startswith("v"):
+                final = "u" + final[1:]
 
             pinyin = initial + final if initial else final  # 处理零声母
-            pinyin_list.append(pinyin)
+            pinyin_list.add(pinyin)
 
-    return pinyin_list
+    return list(pinyin_list)
