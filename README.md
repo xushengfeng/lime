@@ -16,6 +16,8 @@ llm 驱动的输入法。目前支持拼音。
 uv sync
 ```
 
+如果要安装 cpu 版本的运行时，需要在命令前添加`CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"`
+
 ### 下载模型
 
 ```shell
