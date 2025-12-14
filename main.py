@@ -1,11 +1,11 @@
 import math
-from pypinyin import Style, pinyin
 from llama_cpp import Llama
 import numpy as np
 import threading
 
 from typing import List, Dict, Set, Tuple, TypedDict
 
+from assets.pinyin.script.gen_zi_pinyin import load_pinyin
 from utils.keys_to_pinyin import PinyinL
 
 
@@ -64,6 +64,8 @@ print("加载完成")
 
 print("创建拼音索引")
 
+pinyin = load_pinyin()
+
 token_pinyin_map: Dict[int, List[List[str]]] = {}
 first_pinyin_token: Dict[str, Set[int]] = {}
 
@@ -73,12 +75,13 @@ for token_id in range(llm.n_vocab()):
     except:
         continue
     if token:
-        pys = pinyin(token, heteronym=True, style=Style.NORMAL)
-        token_pinyin_map[token_id] = pys
-        for fp in pys[0]:
-            s = first_pinyin_token[fp] if fp in first_pinyin_token else set()
-            s.add(token_id)
-            first_pinyin_token[fp] = s
+        pys = pinyin(token)
+        if pys:
+            token_pinyin_map[token_id] = pys
+            for fp in pys[0]:
+                s = first_pinyin_token[fp] if fp in first_pinyin_token else set()
+                s.add(token_id)
+                first_pinyin_token[fp] = s
 
 
 # 上下文存储
