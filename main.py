@@ -56,7 +56,7 @@ class Debounce:
         self.timer.start()
 
 
-model_name = "../Qwen2-0.5B-Instruct-GGUF/qwen2-0_5b-instruct-q4_0.gguf"
+model_name = "../Qwen3-0.6B-GGUF/Qwen3-0.6B-IQ4_XS.gguf"
 print("加载模型", model_name)
 
 llm = Llama(model_path=model_name, logits_all=True, verbose=False, n_ctx=4096)

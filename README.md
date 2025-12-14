@@ -4,7 +4,7 @@ llm 驱动的输入法。目前支持拼音。
 
 记录用户历史输入。让 llm 预测下一个词，再用拼音筛选。
 
-小型大模型 qwen2-0.5b q4，兼顾速度和联想能力，打字时速度和普通引擎基本无异
+小型大模型 Qwen3-0.6B-IQ4_XS ，兼顾速度和联想能力，打字时速度和普通引擎基本无异
 
 ## 运行
 
@@ -19,7 +19,7 @@ uv sync
 ### 下载模型
 
 ```shell
-git clone https://www.modelscope.cn/qwen/Qwen2-0.5B-Instruct-GGUF.git
+git clone https://www.modelscope.cn/unsloth/Qwen3-0.6B-GGUF.git
 ```
 
 ### 开启服务器
