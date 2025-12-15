@@ -367,6 +367,10 @@ def single_ci(pinyin_input: PinyinL) -> Result:
                                 final_lis.append(item)
                             for i in item["next_ids"]:
                                 r = pinyin_input[len(item["ppy"]) :]
+                                if len(r) == 0:
+                                    # 前面的逻辑是拼音要大于等于候选，这里拼音可以比候选小，因为候选是通过链表生成的可能无限的词
+                                    final_lis.append(item)
+                                    break
                                 p = token_pinyin_map.get(i, [])
                                 m = pinyin_in_pinyin(r, p)
                                 if m:
