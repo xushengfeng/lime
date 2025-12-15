@@ -94,7 +94,7 @@ pre_context = "下面的内容主题多样"
 user_context = []
 last_context_data = {"context": ""}
 
-y用户词: Dict[int, Set[int]] = {}
+y用户词: Dict[int, List[List[int]]] = {}
 
 max_count = 4000
 rm_count = min(max_count, 64, math.floor(max_count * 0.2))
@@ -295,7 +295,7 @@ def beam_search_generate(
 class li(TypedDict):
     ppy: List[PinyinAndKey]
     tkids: List[int]
-    next_ids: Set[int]
+    remainids: List[int]
 
 
 def single_ci(pinyin_input: PinyinL) -> Result:
@@ -352,33 +352,36 @@ def single_ci(pinyin_input: PinyinL) -> Result:
 
                 if rmpy and (token_id in y用户词):
                     # 尝试匹配用户词典
-                    lis: List[li] = [
-                        li(
-                            ppy=token_pinyin.copy(),
-                            next_ids=y用户词.get(token_id, set()),
-                            tkids=[token_id],
+                    lis: List[li] = []
+                    for n in y用户词.get(token_id, []):
+                        lis.append(
+                            li(
+                                ppy=token_pinyin.copy(),
+                                tkids=[token_id],
+                                remainids=n[1:],
+                            )
                         )
-                    ]
                     final_lis: List[li] = []
                     for _i in range(4):
                         nl: List[li] = []
                         for item in lis:
-                            if len(item["next_ids"]) == 0:
-                                final_lis.append(item)
-                            for i in item["next_ids"]:
-                                r = pinyin_input[len(item["ppy"]) :]
-                                if len(r) == 0:
-                                    # 前面的逻辑是拼音要大于等于候选，这里拼音可以比候选小，因为候选是通过链表生成的可能无限的词
-                                    final_lis.append(item)
-                                    break
-                                p = token_pinyin_map.get(i, [])
-                                m = pinyin_in_pinyin(r, p)
-                                if m:
-                                    nitem = li(
-                                        ppy=item["ppy"] + m,
-                                        next_ids=y用户词.get(i, set()),
-                                        tkids=item["tkids"] + [i],
-                                    )
+                            i = item["remainids"][0]
+                            r = pinyin_input[len(item["ppy"]) :]
+                            if len(r) == 0:
+                                break
+                            p = token_pinyin_map.get(i, [])
+                            m = pinyin_in_pinyin(r, p)
+                            if m:
+                                rids = item["remainids"][1:]
+
+                                nitem = li(
+                                    ppy=item["ppy"] + m,
+                                    remainids=rids,
+                                    tkids=item["tkids"] + [i],
+                                )
+                                if not rids:
+                                    final_lis.append(nitem)
+                                else:
                                     nl.append(nitem)
                         lis = nl
                     print(final_lis)
@@ -545,16 +548,13 @@ def add_to_beam(
     return True
 
 
-def add_user_word(w: str, pre_id: int | None = None):
+def add_user_word(w: str):
     ts = llm.tokenize(w.encode())
     if len(ts) > 1:
-        for [i, t] in enumerate(ts):
-            pre = ts[i - 1] if i != 0 else pre_id
-            if pre != None:
-                s = y用户词.get(pre, set())
-                s.add(t)
-                y用户词[pre] = s
-        print("添加用户词", w)
+        l = y用户词.get(ts[0], [])
+        l.append(ts)
+        y用户词[ts[0]] = l
+        return True
 
 
 def try_trim_context():
@@ -581,15 +581,12 @@ def stop_all():
 
 
 class UserData(TypedDict):
-    words: Dict[int, List[int]]
+    words: Dict[int, List[List[int]]]
     context: List[str]
 
 
 def get_user_data():
-    n: Dict[int, List[int]] = {}
-    for i in y用户词:
-        n[i] = list(y用户词[i])
-    return UserData(words=n, context=user_context)
+    return UserData(words=y用户词, context=user_context)
 
 
 def load_user_data(data: UserData):
@@ -601,7 +598,7 @@ def load_user_data(data: UserData):
         user_context.append(i)
     y用户词.clear()
     for i in data["words"]:
-        y用户词[i] = set(data["words"][i])
+        y用户词[i] = data["words"][i]
 
 
 def init_ctx():
