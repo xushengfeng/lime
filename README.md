@@ -6,7 +6,7 @@ llm 常用的文本生成方式是自回归，也就是预测下一个词（toke
 
 使用小型大模型 Qwen3-0.6B-IQ4_XS ，兼顾速度和联想能力，打字时速度和普通引擎基本无异。
 
-python 版本的见其他分支，此版本用 ts 重写。
+python 版本的见[python 分支](https://github.com/xushengfeng/lime/tree/python)，此版本用 ts 重写。
 
 ## 运行
 
