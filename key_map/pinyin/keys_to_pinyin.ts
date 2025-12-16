@@ -38,7 +38,7 @@ export function keys_to_pinyin(keys: string, shuangpin = true): PinyinL {
 				const pinyin_variants = generate_fuzzy_pinyin(pinyin);
 
 				let ni = i;
-				const next = keys.at(i.length);
+				const next = k.at(i.length);
 				if (next === split_key) {
 					ni = i + split_key;
 				}

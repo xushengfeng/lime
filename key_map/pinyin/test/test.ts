@@ -33,13 +33,21 @@ Deno.test("拼音 部分", () => {
 	assertEquals(x1, { key: "w", py: "wo", preeditShow: "w" });
 });
 
+Deno.test("拼音 部分2", () => {
+	const x = keys_to_pinyin("nihao").at(-1);
+	assert((x?.length ?? 0) > 0);
+	const x1 = x?.find((v) => v.py === "ou");
+	assertEquals(x1, { key: "o", py: "ou", preeditShow: "o" });
+});
+
 Deno.test("拼音 分隔符", () => {
 	const x = keys_to_pinyin("ni'", false);
 	assertEquals(x, [[{ key: "ni'", py: "ni", preeditShow: "ni" }]]);
-	const x1 = keys_to_pinyin("ni'hao", false);
+	const x1 = keys_to_pinyin("ni'hao'wo", false);
 	assertEquals(x1, [
 		[{ key: "ni'", py: "ni", preeditShow: "ni" }],
-		[{ key: "hao", py: "hao", preeditShow: "hao" }],
+		[{ key: "hao'", py: "hao", preeditShow: "hao" }],
+		[{ key: "wo", py: "wo", preeditShow: "wo" }],
 	]);
 });
 
