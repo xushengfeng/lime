@@ -1,12 +1,8 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import {
-	type ControlledEvaluateInputItem,
-	getLlama,
-	type Token,
-} from "node-llama-cpp";
+import { getLlama, type Token } from "node-llama-cpp";
 import { load_pinyin } from "./key_map/pinyin/gen_zi_pinyin.ts";
-import { PinyinAndKey, PinyinL } from "./key_map/pinyin/keys_to_pinyin.ts";
+import type { PinyinL } from "./key_map/pinyin/keys_to_pinyin.ts";
 import { pinyin_in_pinyin } from "./utils/pinyin_in_pinyin.ts";
 
 type Candidate = {
@@ -16,6 +12,11 @@ type Candidate = {
 	remainkeys: string[];
 	preedit: string;
 	consumedkeys: number;
+};
+
+type UserData = {
+	words: Record<number, Array<Array<number>>>;
+	context: Array<string>;
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -182,6 +183,24 @@ async function init_ctx() {
 		],
 	]);
 	last_result = x.at(-1)?.next.probabilities;
+}
+
+export function getUserData(): UserData {
+	return {
+		words: Object.fromEntries(y用户词),
+		context: user_context,
+	};
+}
+
+export function loadUserData(data: UserData) {
+	if (y用户词.size > 0 || user_context.length) {
+		console.log("已存在用户数据");
+		return;
+	}
+	user_context.length = 0;
+	for (const i of data.context) user_context.push(i);
+	y用户词.clear();
+	for (const [k, v] of Object.entries(data.words)) y用户词.set(Number(k), v);
 }
 
 class Lock {

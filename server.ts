@@ -7,7 +7,7 @@ import {
 	keys_to_pinyin,
 	type PinyinToKeyOptions,
 } from "./key_map/pinyin/keys_to_pinyin.ts";
-import { commit, single_ci } from "./main.ts";
+import { commit, getUserData, single_ci } from "./main.ts";
 
 const pinyinConfig: PinyinToKeyOptions = {
 	shuangpin: true,
@@ -143,6 +143,10 @@ app.get("/commit", (c) => {
 		console.error("提交文本失败:", error);
 		throw new HTTPException(400, { message: "请求参数错误" });
 	}
+});
+
+app.get("/userdata", (c) => {
+	return c.json(getUserData());
 });
 
 export default app;
