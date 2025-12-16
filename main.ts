@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { getLlama, type Token } from "node-llama-cpp";
 import { load_pinyin } from "./key_map/pinyin/gen_zi_pinyin.ts";
-import type { PinyinL } from "./key_map/pinyin/keys_to_pinyin.ts";
+import type { PinyinAndKey, PinyinL } from "./key_map/pinyin/keys_to_pinyin.ts";
 import { pinyin_in_pinyin } from "./utils/pinyin_in_pinyin.ts";
 
 type Candidate = {
@@ -135,6 +135,57 @@ export async function single_ci(pinyin_input: PinyinL): Promise<{
 
 		if (rmpy.length > 0 && y用户词.has(token_id)) {
 			// todo 用户词
+			type li = {
+				ppy: PinyinAndKey[];
+				tkids: Token[];
+				remainids: Token[];
+			};
+			let lis: li[] = [];
+			for (const n of y用户词.get(token_id) || []) {
+				lis.push({
+					ppy: structuredClone(token_pinyin),
+					tkids: [token_id],
+					remainids: n.slice(1) as Token[],
+				});
+			}
+			const final_lis: li[] = [];
+			for (let _i = 0; _i < 4; _i++) {
+				const nl: li[] = [];
+				for (const item of lis) {
+					const i = item.remainids[0];
+					const r = pinyin_input.slice(item.ppy.length);
+					if (r.length === 0) break;
+					const p = token_pinyin_map.get(i) || [];
+					const m = pinyin_in_pinyin(r, p);
+					if (m) {
+						const rids = item.remainids.slice(1);
+						const nitem: li = {
+							ppy: item.ppy.concat(m),
+							remainids: rids,
+							tkids: item.tkids.concat(i),
+						};
+						if (rids.length === 0) {
+							final_lis.push(nitem);
+						} else {
+							nl.push(nitem);
+						}
+					}
+				}
+				lis = nl;
+			}
+			for (const i of final_lis) {
+				const rmpy = pinyin_input.slice(i.ppy.length).map((i) => i[0].key);
+				c.push({
+					pinyin: i.ppy.map((i) => i.py),
+					score: token_prob,
+					word: model.detokenize(i.tkids),
+					preedit:
+						i.ppy.map((i) => i.preeditShow).join(" ") +
+						(rmpy.length ? " " : ""),
+					remainkeys: rmpy,
+					consumedkeys: i.ppy.map((i) => i.key).join("").length,
+				});
+			}
 		}
 
 		c.push({
