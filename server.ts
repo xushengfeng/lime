@@ -7,7 +7,9 @@ import {
 	keys_to_pinyin,
 	type PinyinToKeyOptions,
 } from "./key_map/pinyin/keys_to_pinyin.ts";
-import { commit, getUserData, single_ci } from "./main.ts";
+import { getUserData, initLIME } from "./main.ts";
+
+const { single_ci, commit } = await initLIME();
 
 const pinyinConfig: PinyinToKeyOptions = {
 	shuangpin: true,

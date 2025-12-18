@@ -1,6 +1,8 @@
 import { pinyin } from "pinyin-pro";
 import { keys_to_pinyin } from "../key_map/pinyin/keys_to_pinyin.ts";
-import { commit, single_ci } from "../main.ts";
+import { initLIME } from "../main.ts";
+
+const { commit, single_ci } = await initLIME();
 
 async function test_text_offset(test_text: string[]) {
 	let offset = 0;

@@ -1,6 +1,8 @@
 import { assertEquals } from "jsr:@std/assert@1.0.16";
 import { keys_to_pinyin } from "../key_map/pinyin/keys_to_pinyin.ts";
-import { commit, single_ci } from "../main.ts";
+import { initLIME } from "../main.ts";
+
+const { commit, single_ci } = await initLIME();
 
 Deno.test("组词", async () => {
 	commit("冰灯");
