@@ -117,6 +117,7 @@ class LIME {
 
 	token_pinyin_map: Map<number, Array<Array<string>>> = new Map();
 	first_pinyin_token = new Map<string, Set<number>>();
+	unIndexedZi = new Map<string, Set<string>>();
 
 	modelEvalLock = new Lock();
 
@@ -132,12 +133,15 @@ class LIME {
 
 		const { pinyin, allZi } = load_pinyin();
 		const nAllZi = structuredClone(allZi.normal);
+		const nAllZi2 = structuredClone(allZi.big);
 
+		// todo 先解码字，再遍历所有token建立索引
 		for (const token_id of model.iterateAllTokens()) {
 			const token = model.detokenize([token_id]);
 			if (!token) continue;
 			const pinyins = pinyin(token);
 			nAllZi.delete(token);
+			nAllZi2.delete(token);
 			if (pinyins.length) {
 				this.token_pinyin_map.set(token_id, pinyins);
 				for (const fp of pinyins[0]) {
@@ -147,8 +151,21 @@ class LIME {
 				}
 			}
 		}
+		for (const zi of nAllZi.union(nAllZi2)) {
+			const pys = pinyin(zi);
+			if (pys.length === 1) {
+				for (const py of pys[0]) {
+					const s = this.unIndexedZi.get(py) ?? new Set();
+					s.add(zi);
+					this.unIndexedZi.set(py, s);
+				}
+			}
+		}
 		if (nAllZi.size > 0) {
-			console.log("以下常用字未建立拼音索引:", Array.from(nAllZi).join(" "));
+			console.log(
+				"以下常用字未直接建立拼音索引:",
+				Array.from(nAllZi).join(" "),
+			);
 		}
 	}
 
@@ -440,6 +457,22 @@ class LIME {
 					(rmpy.length ? " " : ""),
 				consumedkeys: token_pinyin.map((v) => v.key).join("").length,
 			});
+		}
+
+		for (const py of pinyin_input[0]) {
+			const unIndexSet = this.unIndexedZi.get(py.py);
+			if (unIndexSet) {
+				for (const zi of unIndexSet) {
+					c.push({
+						pinyin: [py.py],
+						score: 0.0001,
+						word: zi,
+						remainkeys: pinyin_input.slice(1).map((v) => v[0].py),
+						preedit: py.preeditShow + (pinyin_input.length > 1 ? " " : ""),
+						consumedkeys: py.key.length,
+					});
+				}
+			}
 		}
 
 		c.sort((a, b) => b.pinyin.length - a.pinyin.length);
