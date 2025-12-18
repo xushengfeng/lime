@@ -31,15 +31,21 @@ export function load_pinyin() {
 		d[i] = l.union(new Set(b[i]));
 	}
 
-	return (ci: string) => {
-		const l: string[][] = [];
-		for (const i of ci) {
-			if (i in d) {
-				l.push(Array.from(d[i]));
-			} else {
-				return [];
+	return {
+		pinyin: (ci: string) => {
+			const l: string[][] = [];
+			for (const i of ci) {
+				if (i in d) {
+					l.push(Array.from(d[i]));
+				} else {
+					return [];
+				}
 			}
-		}
-		return l;
+			return l;
+		},
+		allZi: {
+			normal: new Set(Object.keys(a)),
+			big: new Set(Object.keys(b)),
+		},
 	};
 }

@@ -89,6 +89,6 @@ Deno.test("双拼", () => {
 
 Deno.test("字转化拼音", () => {
 	const pinyin = load_pinyin();
-	const x = pinyin("你好");
+	const x = pinyin.pinyin("你好");
 	assertEquals(x, [["ni"], ["hao"]]);
 });

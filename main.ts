@@ -130,12 +130,14 @@ class LIME {
 
 		console.log("创建拼音索引");
 
-		const pinyin = load_pinyin();
+		const { pinyin, allZi } = load_pinyin();
+		const nAllZi = structuredClone(allZi.normal);
 
 		for (const token_id of model.iterateAllTokens()) {
 			const token = model.detokenize([token_id]);
 			if (!token) continue;
 			const pinyins = pinyin(token);
+			nAllZi.delete(token);
 			if (pinyins.length) {
 				this.token_pinyin_map.set(token_id, pinyins);
 				for (const fp of pinyins[0]) {
@@ -144,6 +146,9 @@ class LIME {
 					this.first_pinyin_token.set(fp, s);
 				}
 			}
+		}
+		if (nAllZi.size > 0) {
+			console.log("以下常用字未建立拼音索引:", Array.from(nAllZi).join(" "));
 		}
 	}
 
