@@ -34,8 +34,6 @@ git clone https://www.modelscope.cn/unsloth/Qwen3-0.6B-GGUF.git
 deno serve -A --port 5000 server.ts
 ```
 
-默认启用自然码双拼，`server.ts`里把`pinyinConfig`的`shuangpin`改成`false`即可关闭
-
 创建密钥，一定程度上防止被滥用或隐私泄露
 
 ```shell
@@ -69,9 +67,17 @@ sudo luarocks install luasocket \
 
 除了 ai 优化，还有一些输入法特性：
 
--   模糊音
+-   模糊音，可自定义转化表
 -   双拼（自然码、搜狗、微软、小鹤、智能 ABC、拼音加加、紫光，自定义）
 -   `'`号分割拼音
+
+## 配置
+
+复制`config.ts`为`user_config.ts`，在`user_config.ts`里面修改配置。
+
+比如可以把`shuangpin`的值改成`false`或者改成其他双拼方案。
+
+建议使用现代的代码编辑器修改，比如 vscode、zed、neovim 等，它们提供代码检查，改配置时可以避免错误。
 
 ## 现状
 
