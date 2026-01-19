@@ -45,6 +45,20 @@ Deno.test("拼音 部分2", () => {
 });
 
 Deno.test("拼音 部分3", () => {
+	const x = keys_to_pinyin("a");
+	assertEquals(x, [
+		[
+			{ key: "a", ind: "a", preeditShow: "a" },
+			{ key: "a", ind: "ang", preeditShow: "a" },
+			{ key: "a", ind: "ai", preeditShow: "a" },
+			{ key: "a", ind: "an", preeditShow: "a" },
+			{ key: "a", ind: "ao", preeditShow: "a" },
+			{ key: "a", ind: "a", preeditShow: "a" }, // todo 去重
+		],
+	]);
+});
+
+Deno.test("拼音 部分4", () => {
 	const x = keys_to_pinyin("a").at(-1);
 	assert((x?.length ?? 0) > 0);
 	assertEquals(
