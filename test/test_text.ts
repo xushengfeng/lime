@@ -59,7 +59,8 @@ const offsetT = 100; // 查找偏移需要的时间
 for (let src_t of test_text) {
 	let py = pinyin(src_t, { type: "array", toneType: "none", v: true }).join("");
 	keyCount += py.length;
-	for (let _i = 0; _i < src_t.length; _i++) {
+	const len = src_t.length;
+	for (let _i = 0; _i < len; _i++) {
 		const c = await single_ci(keys_to_pinyin(py));
 		const m = match(src_t, c);
 		if (m === undefined) {
