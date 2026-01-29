@@ -302,6 +302,7 @@ export class LIME {
 		};
 		const new_last_result = filterByPinyin(pinyin_input, last_result);
 
+		// 自定义用户词
 		for (const [
 			token_id,
 			{ py: token_pinyin, prob: token_prob },
@@ -362,17 +363,43 @@ export class LIME {
 				}
 			}
 		}
-		let thinkCount = 0;
+
+		// 常规
+		let maxProbId = -1 as Token;
+		let maxProb = 0;
 		for (const [
 			token_id,
 			{ py: token_pinyin, prob: token_prob, token },
 		] of new_last_result) {
 			const rmpy = pinyin_input.slice(token_pinyin.length).map((v) => v[0].ind);
+			if (token_prob > maxProb) {
+				maxProb = token_prob;
+				maxProbId = token_id;
+			}
+			c.push({
+				pinyin: token_pinyin.map((v) => v.ind),
+				score: token_prob,
+				word: token,
+				remainkeys: rmpy,
+				preedit:
+					token_pinyin.map((v) => v.preeditShow).join(" ") +
+					(rmpy.length ? " " : ""),
+				consumedkeys: token_pinyin.map((v) => v.key).join("").length,
+			});
+		}
+
+		// 首个后续补全为长句
+		await (async () => {
+			const token_id = maxProbId;
+			if (token_id === -1) return;
+			const _r = new_last_result.get(token_id);
+			if (!_r) return;
+			const { py: token_pinyin, prob: token_prob } = _r;
+
+			const rmpy = pinyin_input.slice(token_pinyin.length).map((v) => v[0].ind);
 			const _lastTokenId = this.sequence.contextTokens.at(-1);
 			if (rmpy.length > 0) {
 				if (token_prob > 0.7) {
-					if (thinkCount > 1) break;
-					thinkCount++;
 					let prob = token_prob;
 					let rmpyx = pinyin_input.slice(token_pinyin.length);
 					const tklppy: ZiIndAndKey[] = [...token_pinyin];
@@ -437,18 +464,7 @@ export class LIME {
 					}
 				}
 			}
-
-			c.push({
-				pinyin: token_pinyin.map((v) => v.ind),
-				score: token_prob,
-				word: token,
-				remainkeys: rmpy,
-				preedit:
-					token_pinyin.map((v) => v.preeditShow).join(" ") +
-					(rmpy.length ? " " : ""),
-				consumedkeys: token_pinyin.map((v) => v.key).join("").length,
-			});
-		}
+		})();
 
 		for (const py of pinyin_input[0]) {
 			const unIndexSet = this.unIndexedZi.get(py.ind);
