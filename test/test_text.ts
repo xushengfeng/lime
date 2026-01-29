@@ -4,6 +4,11 @@ import { pinyin } from "pinyin-pro";
 import { load_pinyin } from "../key_map/pinyin/gen_zi_pinyin.ts";
 import { keys_to_pinyin } from "../key_map/pinyin/keys_to_pinyin.ts";
 import { initLIME, type Result } from "../main.ts";
+import { generate_pinyin } from "../key_map/pinyin/all_pinyin.ts";
+import {
+	shuangpinMaps,
+	generate_shuang_pinyin,
+} from "../key_map/pinyin/shuangpin.ts";
 
 const { commit, single_ci } = await initLIME({ ziInd: load_pinyin() });
 
@@ -51,17 +56,29 @@ function match(src_t: string, r: Result) {
 	}
 }
 
+const pinyin_k_l = generate_pinyin().toSorted((a, b) => b.length - a.length);
+const shuangpinMap = generate_shuang_pinyin(pinyin_k_l, shuangpinMaps.自然码);
+function pinyin2shuangpin(py: string) {
+	for (const [k, v] of Object.entries(shuangpinMap)) {
+		if (v.includes(py)) return k;
+	}
+	return py;
+}
+
 let offset = 0;
 let keyCount = 0;
-const keyT = (1000 * 60) / 120;
+const keyT = (1000 * 60) / 80;
 const offsetT = 100; // 查找偏移需要的时间
 
 for (let src_t of test_text) {
-	let py = pinyin(src_t, { type: "array", toneType: "none", v: true }).join("");
+	let py = pinyin(src_t, { type: "array", toneType: "none", v: true })
+		.map((i) => pinyin2shuangpin(i))
+		.join("");
+
 	keyCount += py.length;
 	const len = src_t.length;
 	for (let _i = 0; _i < len; _i++) {
-		const c = await single_ci(keys_to_pinyin(py));
+		const c = await single_ci(keys_to_pinyin(py, { shuangpin: "自然码" }));
 		const m = match(src_t, c);
 		if (m === undefined) {
 			if (!" ，。《》？！“”：/、".includes(src_t)) console.log("找不到", src_t);
@@ -69,7 +86,7 @@ for (let src_t of test_text) {
 			continue;
 		}
 		keyCount++; // confirm
-		py = m.rm.join("");
+		py = m.rm.map((i) => pinyin2shuangpin(i)).join("");
 		src_t = src_t.slice(m.text.length);
 		console.log(m.text, m.idx, m.idx !== 0 ? c.candidates[0].word : "");
 		offset += m.idx;
