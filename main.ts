@@ -171,6 +171,8 @@ export class LIME {
 		let new_text = "";
 		let nt = newT;
 
+		longSentenceCache = [];
+
 		if (update) {
 			if (text.startsWith(last_context_data.context)) {
 				new_text = text.slice(last_context_data.context.length);
