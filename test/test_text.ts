@@ -71,7 +71,7 @@ for (let src_t of test_text) {
 		keyCount++; // confirm
 		py = m.rm.join("");
 		src_t = src_t.slice(m.text.length);
-		console.log(m.text, m.idx);
+		console.log(m.text, m.idx, m.idx !== 0 ? c.candidates[0].word : "");
 		offset += m.idx;
 		if (src_t === "") break;
 	}

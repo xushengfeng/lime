@@ -519,8 +519,27 @@ export class LIME {
 				}
 				const f = filterByPinyin(rmpyx, next);
 				if (f.size > 0) {
-					// todo 长词优先
-					const first = f.entries().next().value;
+					let long = 0;
+					for (const v of f.values()) {
+						if (v.py.length > long) long = v.py.length;
+					}
+					let first:
+						| [
+								Token,
+								{
+									py: ZiIndAndKey[];
+									prob: number;
+									token: string;
+								},
+						  ]
+						| undefined;
+					for (const ff of f.entries()) {
+						if (ff[1].py.length === long) {
+							first = ff;
+							break;
+						}
+					}
+					if ((first?.[1]?.prob ?? 0) < 0.05) first = f.entries().next().value;
 					if (first) {
 						prob *= first[1].prob;
 						const tp = first[1];
