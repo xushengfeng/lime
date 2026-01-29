@@ -46,6 +46,14 @@ const y用户词 = new Map<number, Array<Array<number>>>();
 // const rm_count = Math.min(max_count, 64, Math.floor(max_count * 0.2));
 
 let last_result: Map<Token, number> | undefined;
+/** 长句补全，记录拼音和token对 */
+let longSentenceCache: {
+	py: ZiIndL;
+	matchPY: ZiIndAndKey[];
+	token: Token[];
+	nextResult: Map<Token, number>;
+}[] = [];
+let lastCommitOffset = 0;
 
 function get_context() {
 	return pre_context + user_context.join("");
@@ -192,8 +200,16 @@ export class LIME {
 		const pre = to_run.slice(0, -1);
 		const last = to_run[to_run.length - 1];
 		const release = this.modelEvalLock.lock();
-		this.sequence
-			.controlledEvaluate([
+		// 强制commit为异步执行，避免请求阻塞
+		(async () => {
+			// todo 根据缓存判断，比如长句实际上已经近似提交了
+			await this.sequence.eraseContextTokenRanges([
+				{
+					start: lastCommitOffset,
+					end: this.sequence.contextTokens.length,
+				},
+			]);
+			const res = await this.sequence.controlledEvaluate([
 				...pre,
 				[
 					last,
@@ -203,11 +219,11 @@ export class LIME {
 						},
 					},
 				],
-			])
-			.then((res) => {
-				last_result = res.at(-1)?.next.probabilities;
-				release();
-			});
+			]);
+			last_result = res.at(-1)?.next.probabilities;
+			lastCommitOffset = this.sequence.contextTokens.length - 1;
+			release();
+		})();
 
 		// todo trim context reset
 	};
@@ -367,15 +383,21 @@ export class LIME {
 		// 常规
 		let maxProbId = -1 as Token;
 		let maxProb = 0;
+		let lastLen = 0;
 		for (const [
 			token_id,
 			{ py: token_pinyin, prob: token_prob, token },
 		] of new_last_result) {
 			const rmpy = pinyin_input.slice(token_pinyin.length).map((v) => v[0].ind);
-			if (token_prob > maxProb) {
+			if (token_pinyin.length > lastLen) {
+				lastLen = token_pinyin.length;
 				maxProb = token_prob;
 				maxProbId = token_id;
-			}
+			} else if (token_pinyin.length === lastLen)
+				if (token_prob > maxProb) {
+					maxProb = token_prob;
+					maxProbId = token_id;
+				}
 			c.push({
 				pinyin: token_pinyin.map((v) => v.ind),
 				score: token_prob,
@@ -388,7 +410,7 @@ export class LIME {
 			});
 		}
 
-		// 首个后续补全为长句
+		// 首个候选补全为长句
 		await (async () => {
 			const token_id = maxProbId;
 			if (token_id === -1) return;
@@ -396,73 +418,139 @@ export class LIME {
 			if (!_r) return;
 			const { py: token_pinyin, prob: token_prob } = _r;
 
-			const rmpy = pinyin_input.slice(token_pinyin.length).map((v) => v[0].ind);
-			const _lastTokenId = this.sequence.contextTokens.at(-1);
-			if (rmpy.length > 0) {
-				if (token_prob > 0.7) {
-					let prob = token_prob;
-					let rmpyx = pinyin_input.slice(token_pinyin.length);
-					const tklppy: ZiIndAndKey[] = [...token_pinyin];
-					const tkl: Token[] = [token_id];
-					let evalCount = 0;
-					// todo 拼音序列改变后才erase，可以复用一些计算，现在总是重新计算，效率低
-					for (let _i = 0; _i < Math.min(rmpyx.length, 4); _i++) {
-						const next = await this.sequence.controlledEvaluate([
+			if (pinyin_input.length === token_pinyin.length) {
+				longSentenceCache = [];
+				return;
+			}
+
+			let sameCacheLen = 0;
+			let pyIndex = 0;
+
+			for (const [i, cache] of longSentenceCache.entries()) {
+				const cpyl = cache.py;
+				const inputPyl = pinyin_input.slice(pyIndex, pyIndex + cpyl.length);
+				if (JSON.stringify(cpyl) !== JSON.stringify(inputPyl)) {
+					break;
+				}
+				sameCacheLen = i + 1;
+				pyIndex += cpyl.length;
+			}
+			const sameCache = longSentenceCache.slice(0, sameCacheLen);
+			const cacheTokens = sameCache.flatMap((i) => i.token);
+			if (
+				this.sequence.contextTokens
+					.slice(lastCommitOffset, lastCommitOffset + cacheTokens.length)
+					.join(",") !== cacheTokens.join(",")
+			) {
+				console.error("长句缓存不匹配");
+			}
+			await this.sequence.eraseContextTokenRanges([
+				{
+					start: lastCommitOffset + cacheTokens.length,
+					end: this.sequence.contextTokens.length,
+				},
+			]);
+			if (
+				cacheTokens.at(-1) &&
+				cacheTokens.at(-1) !== this.sequence.contextTokens.at(-1)
+			) {
+				console.error("erase error");
+			}
+
+			longSentenceCache = longSentenceCache.slice(0, sameCacheLen);
+
+			let prob = token_prob;
+			let rmpyx = pinyin_input.slice(
+				sameCache.flatMap((i) => i.matchPY).length,
+			);
+			const tklppy: ZiIndAndKey[] = [...sameCache.flatMap((i) => i.matchPY)];
+			const tkl: Token[] = [...cacheTokens];
+
+			function select(op: {
+				py: ZiIndL;
+				matchPY: ZiIndAndKey[];
+				token: Token[];
+				nextResult: Map<Token, number>;
+			}) {
+				tklppy.push(...op.matchPY);
+				tkl.push(...op.token);
+				rmpyx = pinyin_input.slice(tklppy.length);
+
+				longSentenceCache.push({
+					py: op.py,
+					matchPY: op.matchPY,
+					token: op.token,
+					nextResult: op.nextResult,
+				});
+			}
+
+			const addToken = async (token: Token) => {
+				return (
+					(
+						await this.sequence.controlledEvaluate([
 							[
-								// biome-ignore lint/style/noNonNullAssertion: 上面初始化已经保证了元素
-								tkl.at(-1)!,
+								token,
 								{
 									generateNext: {
 										probabilities: true,
 									},
 								},
 							],
-						]);
-						evalCount++;
-						const f = filterByPinyin(
-							rmpyx,
-							next.at(-1)?.next.probabilities || new Map(),
-						);
-						if (f.size > 0) {
-							const first = f.entries().next().value;
-							if (first) {
-								if (first[1].prob < 0.8) {
-									break;
-								}
-								prob *= first[1].prob;
-								tkl.push(first[0]);
-								const tp = first[1];
-								tklppy.push(...tp.py);
-								rmpyx = pinyin_input.slice(tklppy.length);
-								if (rmpyx.length === 0) {
-									break;
-								}
-							}
+						])
+					).at(-1)?.next.probabilities || new Map<Token, number>()
+				);
+			};
+
+			if (longSentenceCache.length === 0)
+				select({
+					token: [token_id],
+					matchPY: token_pinyin,
+					py: pinyin_input.slice(0, token_pinyin.length),
+					nextResult: await addToken(token_id),
+				});
+
+			const l = rmpyx.length;
+
+			for (let _i = 0; _i < Math.min(l, 4); _i++) {
+				const next = longSentenceCache.at(-1)?.nextResult;
+				if (!next) {
+					console.log("no next");
+					break;
+				}
+				const f = filterByPinyin(rmpyx, next);
+				if (f.size > 0) {
+					// todo 长词优先
+					const first = f.entries().next().value;
+					if (first) {
+						prob *= first[1].prob;
+						const tp = first[1];
+						select({
+							token: [first[0]],
+							matchPY: tp.py,
+							py: pinyin_input.slice(
+								tklppy.length,
+								tklppy.length + tp.py.length,
+							),
+							nextResult: await addToken(first[0]),
+						});
+						if (rmpyx.length === 0) {
+							break;
 						}
 					}
-					await this.sequence.eraseContextTokenRanges([
-						{
-							start: this.sequence.contextTokens.length - evalCount,
-							end: this.sequence.contextTokens.length,
-						},
-					]);
-					if (this.sequence.contextTokens.at(-1) !== _lastTokenId) {
-						console.error("erase error");
-					}
-
-					if (tkl.length > 1) {
-						c.push({
-							pinyin: tklppy.map((v) => v.ind),
-							score: prob,
-							word: this.model.detokenize(tkl),
-							remainkeys: rmpyx.map((v) => v[0].ind),
-							preedit:
-								tklppy.map((v) => v.preeditShow).join(" ") +
-								(rmpyx.length ? " " : ""),
-							consumedkeys: tklppy.map((v) => v.key).join("").length,
-						});
-					}
 				}
+			}
+
+			if (tkl.length > 1) {
+				c.push({
+					pinyin: tklppy.map((v) => v.ind),
+					score: prob,
+					word: this.model.detokenize(tkl),
+					remainkeys: rmpyx.map((v) => v[0].ind),
+					preedit:
+						tklppy.map((v) => v.preeditShow).join(" ") +
+						(rmpyx.length ? " " : ""),
+					consumedkeys: tklppy.map((v) => v.key).join("").length,
+				});
 			}
 		})();
 
@@ -516,6 +604,7 @@ export class LIME {
 			],
 		]);
 		last_result = x.at(-1)?.next.probabilities;
+		lastCommitOffset = this.sequence.contextTokens.length - 1;
 	};
 
 	getUserData(): UserData {
