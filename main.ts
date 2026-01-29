@@ -223,7 +223,7 @@ export class LIME {
 				],
 			]);
 			last_result = res.at(-1)?.next.probabilities;
-			lastCommitOffset = this.sequence.contextTokens.length - 1;
+			lastCommitOffset = this.sequence.contextTokens.length;
 			release();
 		})();
 
@@ -625,7 +625,7 @@ export class LIME {
 			],
 		]);
 		last_result = x.at(-1)?.next.probabilities;
-		lastCommitOffset = this.sequence.contextTokens.length - 1;
+		lastCommitOffset = this.sequence.contextTokens.length;
 	};
 
 	getUserData(): UserData {
