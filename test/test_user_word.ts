@@ -3,13 +3,12 @@ import { load_pinyin } from "../key_map/pinyin/gen_zi_pinyin.ts";
 import { keys_to_pinyin } from "../key_map/pinyin/keys_to_pinyin.ts";
 import { initLIME } from "../main.ts";
 
-const { commit, single_ci } = await initLIME({ ziInd: load_pinyin() });
+const { commit, single_ci, addUserWord } = await initLIME({
+	ziInd: load_pinyin(),
+});
 
 Deno.test("组词", async () => {
-	await commit("冰灯");
-	await commit("灯盏");
-	await commit("悠然自得");
-	await commit("冰灯");
+	addUserWord("冰灯");
 	const r = await single_ci(keys_to_pinyin("bingdeng"));
 	console.log(r.candidates.slice(0, 5));
 	assertEquals(r.candidates[0].word, "冰灯");

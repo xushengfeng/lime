@@ -30,10 +30,6 @@ type UserData = {
 	context: Array<string>;
 };
 
-type ThinkOption = {
-	userWord: boolean;
-};
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 class Lock {
@@ -84,13 +80,21 @@ export async function loadModel(op?: {
 export async function initLIME(
 	op: Parameters<typeof loadModel>[0] & {
 		ziInd: { trans: ZiIndFunc; allSymbol: Set<string> };
+		omitContext?: boolean;
 	},
 ) {
 	const { model, context } = await loadModel(op);
-	const lime = new LIME({ model, context, ziInd: op.ziInd });
+	const lime = new LIME({
+		model,
+		context,
+		ziInd: op.ziInd,
+		omitContext: op.omitContext,
+	});
 	await lime.init_ctx();
 	return lime;
 }
+
+type ExToken = Token | number;
 
 export class LIME {
 	model: LlamaModel;
@@ -101,18 +105,21 @@ export class LIME {
 	first_pinyin_token = new Map<string, Set<number>>();
 	unIndexedZi = new Map<string, Set<string>>();
 
-	pre_context = "下面的内容主题多样";
+	private pre_context = "下面的内容主题多样";
 	user_context: string[] = [];
 	last_context_data = { context: "" };
-	y用户词 = new Map<number, Array<Array<number>>>();
+	private y用户词 = new Map<number, Array<Array<number>>>();
+	private userTokens = new Map<ExToken, Array<Token>>();
+	private userTokensFirstIndex = new Map<Token, Set<ExToken>>();
+	private tokenIndex = 0;
 
-	private last_result: Map<Token, number> | undefined;
+	private last_result: Map<ExToken, number> | undefined;
 	/** 长句补全，记录拼音和token对 */
 	private longSentenceCache: {
 		py: ZiIndL;
 		matchPY: ZiIndAndKey[];
-		token: Token[];
-		nextResult: Map<Token, number>;
+		token: ExToken[];
+		nextResult: Map<ExToken, number>;
 	}[] = [];
 	private lastCommitOffset = 0;
 
@@ -131,10 +138,12 @@ export class LIME {
 		model,
 		context,
 		ziInd,
+		omitContext,
 	}: {
 		model: LlamaModel;
 		context: LlamaContext;
 		ziInd: { trans: ZiIndFunc; allSymbol: Set<string> };
+		omitContext?: boolean;
 	}) {
 		this.model = model;
 		this.context = context;
@@ -146,10 +155,17 @@ export class LIME {
 			64,
 			Math.floor(this.max_count * 0.2),
 		);
+		if (!omitContext) this.omitContext.cancel();
 
 		console.log("创建拼音索引");
 
 		const { trans, allSymbol } = ziInd;
+
+		let max = 0;
+		for (const token_id of model.iterateAllTokens()) {
+			max = Math.max(max, token_id);
+		}
+		this.tokenIndex = max + 1;
 
 		// todo 先解码字，再遍历所有token建立索引
 		for (const token_id of model.iterateAllTokens()) {
@@ -245,8 +261,6 @@ export class LIME {
 		}
 		if (!new_text) return;
 
-		if (newT) this.add_user_word(text);
-
 		this.user_context.push(new_text);
 
 		// todo shift context
@@ -278,7 +292,11 @@ export class LIME {
 					},
 				],
 			]);
-			this.last_result = res.at(-1)?.next.probabilities;
+			this.last_result = res.at(-1)?.next.probabilities; // todo 如果在自定义中某个tk值比较大，那尝试多运行一步
+			// 临时
+			for (const i of this.userTokens.keys()) {
+				this.last_result?.set(i, 0);
+			}
 			this.lastCommitOffset = this.sequence.contextTokens.length;
 			release();
 		})();
@@ -300,28 +318,47 @@ export class LIME {
 		return this.last_result;
 	};
 
-	detoken = (token: Token) => {
-		return this.model.detokenize([token]);
+	exTokens = (tokens: ExToken[]) => {
+		const tks = tokens.flatMap((i) => this.userTokens.get(i) ?? [i as Token]);
+		return tks;
+	};
+	detoken = (tokens: ExToken[]) => {
+		return this.model.detokenize(this.exTokens(tokens));
 	};
 
-	add_user_word = (w: string) => {
+	addUserWord = (w: string) => {
 		const ts = this.model.tokenizer(w);
 		if (ts.length === 0) return false;
-		const l = this.y用户词.get(ts[0]) ?? [];
-		for (const exist of l) {
-			if (exist.length !== ts.length) continue;
-			const same = exist.every((v, i) => v === ts[i]);
-			if (same) return false;
+
+		const token_id = this.tokenIndex++;
+
+		if (ts.some((i) => !this.token_pinyin_map.has(i))) return false;
+
+		this.userTokens.set(token_id, ts); // todo 去重
+
+		const findex = this.userTokensFirstIndex.get(ts[0]) ?? new Set();
+		findex.add(token_id);
+		this.userTokensFirstIndex.set(ts[0], findex);
+
+		const pys = ts.flatMap((i) => this.token_pinyin_map.get(i) || []);
+
+		this.token_pinyin_map.set(token_id, pys);
+		for (const fp of pys[0]) {
+			const s = this.first_pinyin_token.get(fp) ?? new Set();
+			s.add(token_id);
+			this.first_pinyin_token.set(fp, s);
 		}
-		l.push(ts);
-		this.y用户词.set(ts[0], l);
+
+		if (this.last_result) {
+			this.last_result.set(token_id, 0);
+		}
+
+		console.log(`${w} -> ${token_id}`);
+
 		return true;
 	};
 
-	single_ci = async (
-		pinyin_input: ZiIndL,
-		op?: ThinkOption,
-	): Promise<Result> => {
+	single_ci = async (pinyin_input: ZiIndL): Promise<Result> => {
 		if (pinyin_input.length === 0 || pinyin_input[0].length === 0) {
 			return { candidates: [] };
 		}
@@ -337,10 +374,10 @@ export class LIME {
 
 		const filterByPinyin = (
 			pinyin_input: ZiIndL,
-			last_result: Map<Token, number>,
+			last_result: Map<ExToken, number>,
 		) => {
 			const new_last_result = new Map<
-				Token,
+				ExToken,
 				{ py: ZiIndAndKey[]; prob: number; token: string }
 			>();
 			let scoreSum = 0;
@@ -352,7 +389,7 @@ export class LIME {
 
 			for (const [token_id, token_prob] of last_result) {
 				if (!ftokenid.has(token_id)) continue;
-				const token = this.model.detokenize([token_id]);
+				const token = this.detoken([token_id]);
 				if (!token) continue;
 				if (["\t", "\n", " "].includes(token[0])) continue;
 
@@ -366,7 +403,7 @@ export class LIME {
 				new_last_result.set(token_id, {
 					py: token_pinyin,
 					prob: token_prob,
-					token: this.model.detokenize([token_id]),
+					token: this.detoken([token_id]),
 				});
 				scoreSum += token_prob;
 			}
@@ -377,70 +414,8 @@ export class LIME {
 		};
 		const new_last_result = filterByPinyin(pinyin_input, this.last_result);
 
-		// 自定义用户词
-		for (const [
-			token_id,
-			{ py: token_pinyin, prob: token_prob },
-		] of new_last_result) {
-			const rmpy = pinyin_input.slice(token_pinyin.length).map((v) => v[0].ind);
-
-			if (op?.userWord && rmpy.length > 0 && this.y用户词.has(token_id)) {
-				type li = {
-					ppy: ZiIndAndKey[];
-					tkids: Token[];
-					remainids: Token[];
-				};
-				let lis: li[] = [];
-				for (const n of this.y用户词.get(token_id) || []) {
-					lis.push({
-						ppy: structuredClone(token_pinyin),
-						tkids: [token_id],
-						remainids: n.slice(1) as Token[],
-					});
-				}
-				const final_lis: li[] = [];
-				for (let _i = 0; _i < 4; _i++) {
-					const nl: li[] = [];
-					for (const item of lis) {
-						const i = item.remainids[0];
-						const r = pinyin_input.slice(item.ppy.length);
-						if (r.length === 0) break;
-						const p = this.token_pinyin_map.get(i) || [];
-						const m = ziid_in_ziid(r, p);
-						if (m) {
-							const rids = item.remainids.slice(1);
-							const nitem: li = {
-								ppy: item.ppy.concat(m),
-								remainids: rids,
-								tkids: item.tkids.concat(i),
-							};
-							if (rids.length === 0) {
-								final_lis.push(nitem);
-							} else {
-								nl.push(nitem);
-							}
-						}
-					}
-					lis = nl;
-				}
-				for (const i of final_lis) {
-					const rmpy = pinyin_input.slice(i.ppy.length).map((i) => i[0].key);
-					c.push({
-						pinyin: i.ppy.map((i) => i.ind),
-						score: token_prob,
-						word: this.model.detokenize(i.tkids),
-						preedit:
-							i.ppy.map((i) => i.preeditShow).join(" ") +
-							(rmpy.length ? " " : ""),
-						remainkeys: rmpy,
-						consumedkeys: i.ppy.map((i) => i.key).join("").length,
-					});
-				}
-			}
-		}
-
 		// 常规
-		let maxProbId = -1 as Token;
+		let maxProbId = -1 as ExToken;
 		let maxProb = 0;
 		let lastLen = 0;
 		for (const [
@@ -526,13 +501,13 @@ export class LIME {
 				sameCache.flatMap((i) => i.matchPY).length,
 			);
 			const tklppy: ZiIndAndKey[] = [...sameCache.flatMap((i) => i.matchPY)];
-			const tkl: Token[] = [...cacheTokens];
+			const tkl: ExToken[] = [...cacheTokens];
 
 			const select = (op: {
 				py: ZiIndL;
 				matchPY: ZiIndAndKey[];
-				token: Token[];
-				nextResult: Map<Token, number>;
+				token: ExToken[];
+				nextResult: Map<ExToken, number>;
 			}) => {
 				tklppy.push(...op.matchPY);
 				tkl.push(...op.token);
@@ -546,12 +521,15 @@ export class LIME {
 				});
 			};
 
-			const addToken = async (token: Token) => {
-				return (
+			const addToken = async (token: ExToken) => {
+				const tks = this.exTokens([token]);
+				const r =
 					(
 						await this.sequence.controlledEvaluate([
+							...tks.slice(0, -1),
 							[
-								token,
+								// biome-ignore lint/style/noNonNullAssertion: none
+								tks.at(-1)!,
 								{
 									generateNext: {
 										probabilities: true,
@@ -559,8 +537,9 @@ export class LIME {
 								},
 							],
 						])
-					).at(-1)?.next.probabilities || new Map<Token, number>()
-				);
+					).at(-1)?.next.probabilities || new Map<ExToken, number>(); // todo
+				for (const ntk of this.userTokens.keys()) r.set(ntk, 0);
+				return r;
 			};
 
 			if (this.longSentenceCache.length === 0)
@@ -587,16 +566,9 @@ export class LIME {
 					for (const v of f.values()) {
 						if (v.py.length > long) long = v.py.length;
 					}
-					let first:
-						| [
-								Token,
-								{
-									py: ZiIndAndKey[];
-									prob: number;
-									token: string;
-								},
-						  ]
-						| undefined;
+					type ExtractMapEntry<M> =
+						M extends Map<infer K, infer V> ? [K, V] : never;
+					let first: ExtractMapEntry<typeof f> | undefined;
 					for (const ff of f.entries()) {
 						if (ff[1].py.length === long) {
 							first = ff;
@@ -627,7 +599,7 @@ export class LIME {
 				c.push({
 					pinyin: tklppy.map((v) => v.ind),
 					score: prob,
-					word: this.model.detokenize(tkl),
+					word: this.detoken(tkl),
 					remainkeys: rmpyx.map((v) => v[0].ind),
 					preedit:
 						tklppy.map((v) => v.preeditShow).join(" ") +
@@ -711,6 +683,7 @@ class deBounce {
 	private timeout: number | null = null;
 	private delay: number;
 	private fun = () => {};
+	private cancelled = false;
 	constructor(delay: number, fun: () => void) {
 		this.delay = delay;
 		this.fun = fun;
@@ -718,6 +691,7 @@ class deBounce {
 
 	reset() {
 		if (this.timeout) clearTimeout(this.timeout);
+		if (this.cancelled) return;
 		this.timeout = setTimeout(() => {
 			this.fun();
 		}, this.delay);
@@ -725,5 +699,6 @@ class deBounce {
 
 	cancel() {
 		if (this.timeout) clearTimeout(this.timeout);
+		this.cancelled = true;
 	}
 }

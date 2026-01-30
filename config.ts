@@ -4,7 +4,7 @@ import { initLIME } from "./main.ts";
 import type { Config } from "./utils/config.d.ts";
 
 const config: Config = {
-	runner: await initLIME({ ziInd: load_pinyin() }),
+	runner: await initLIME({ ziInd: load_pinyin(), omitContext: true }),
 	key2ZiInd: (key: string) =>
 		keys_to_pinyin(key, {
 			shuangpin: "自然码",
