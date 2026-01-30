@@ -37,16 +37,22 @@ type ThinkOption = {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 class Lock {
-	pm: Promise<void> | null = null;
+	private pm: Promise<void> | null = null;
 
 	async acquire() {
 		if (this.pm) await this.pm;
 	}
 
-	lock() {
+	async lock() {
+		await this.acquire();
 		const p = Promise.withResolvers<void>();
 		this.pm = p.promise;
-		return p.resolve;
+
+		return {
+			release: () => {
+				p.resolve();
+			},
+		};
 	}
 }
 
@@ -116,7 +122,9 @@ export class LIME {
 	private rm_count = 20;
 	private omitContext = new deBounce(1000 * 10, async () => {
 		await this.modelEvalLock.acquire();
+		const { release } = await this.modelEvalLock.lock();
 		await this.tryOmitContext();
+		release();
 	});
 
 	constructor({
@@ -183,7 +191,6 @@ export class LIME {
 		if (this.sequence.contextTokens.length <= maxCount) {
 			return;
 		}
-		await this.modelEvalLock.acquire();
 		const oldTokenLen = this.sequence.contextTokens.length;
 
 		// 输入分词可能有些情况不是像分词器那样的切分，会影响模型性能，这里重编码分词
@@ -191,7 +198,7 @@ export class LIME {
 		const oldText = this.model.detokenize(oldTokens);
 		const newTokens = this.model
 			.tokenizer(oldText)
-			.slice(-(maxCount - this.rm_count));
+			.slice(-Math.max(maxCount - this.rm_count, 1));
 
 		await this.sequence.clearHistory();
 		await this.sequence.controlledEvaluate([
@@ -249,9 +256,10 @@ export class LIME {
 
 		const pre = to_run.slice(0, -1);
 		const last = to_run[to_run.length - 1];
-		const release = this.modelEvalLock.lock();
 		// 强制commit为异步执行，避免请求阻塞
 		(async () => {
+			const { release } = await this.modelEvalLock.lock();
+			await this.tryOmitContext(pre.length + 1);
 			// todo 根据缓存判断，比如长句实际上已经近似提交了
 			await this.sequence.eraseContextTokenRanges([
 				{
@@ -259,7 +267,6 @@ export class LIME {
 					end: this.sequence.contextTokens.length,
 				},
 			]);
-			await this.tryOmitContext(pre.length + 1);
 			const res = await this.sequence.controlledEvaluate([
 				...pre,
 				[
@@ -325,8 +332,8 @@ export class LIME {
 
 		const c: Candidate[] = [];
 
-		await this.tryOmitContext();
 		await this.modelEvalLock.acquire();
+		await this.tryOmitContext();
 
 		const filterByPinyin = (
 			pinyin_input: ZiIndL,
