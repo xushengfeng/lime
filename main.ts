@@ -36,28 +36,6 @@ type ThinkOption = {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const pre_context = "下面的内容主题多样";
-const user_context: string[] = [];
-const last_context_data = { context: "" };
-const y用户词 = new Map<number, Array<Array<number>>>();
-
-const max_count = 4000;
-const rm_count = Math.min(max_count, 64, Math.floor(max_count * 0.2));
-
-let last_result: Map<Token, number> | undefined;
-/** 长句补全，记录拼音和token对 */
-let longSentenceCache: {
-	py: ZiIndL;
-	matchPY: ZiIndAndKey[];
-	token: Token[];
-	nextResult: Map<Token, number>;
-}[] = [];
-let lastCommitOffset = 0;
-
-function get_context() {
-	return pre_context + user_context.join("");
-}
-
 class Lock {
 	pm: Promise<void> | null = null;
 
@@ -72,7 +50,10 @@ class Lock {
 	}
 }
 
-export async function loadModel(op?: { modelPath?: string }) {
+export async function loadModel(op?: {
+	modelPath?: string;
+	contextSize?: number;
+}) {
 	const modelPath =
 		op?.modelPath ??
 		path.join(__dirname, "../Qwen3-0.6B-GGUF/Qwen3-0.6B-IQ4_XS.gguf");
@@ -87,17 +68,18 @@ export async function loadModel(op?: { modelPath?: string }) {
 		modelPath: modelPath,
 	});
 	const context = await model.createContext({
-		contextSize: { max: max_count },
+		contextSize: { max: op?.contextSize ?? 4096 },
 	});
 	console.log("加载完成");
 
 	return { model, context };
 }
 
-export async function initLIME(op: {
-	modelPath?: string;
-	ziInd: { trans: ZiIndFunc; allSymbol: Set<string> };
-}) {
+export async function initLIME(
+	op: Parameters<typeof loadModel>[0] & {
+		ziInd: { trans: ZiIndFunc; allSymbol: Set<string> };
+	},
+) {
 	const { model, context } = await loadModel(op);
 	const lime = new LIME({ model, context, ziInd: op.ziInd });
 	await lime.init_ctx();
@@ -113,8 +95,25 @@ export class LIME {
 	first_pinyin_token = new Map<string, Set<number>>();
 	unIndexedZi = new Map<string, Set<string>>();
 
-	modelEvalLock = new Lock();
+	pre_context = "下面的内容主题多样";
+	user_context: string[] = [];
+	last_context_data = { context: "" };
+	y用户词 = new Map<number, Array<Array<number>>>();
 
+	private last_result: Map<Token, number> | undefined;
+	/** 长句补全，记录拼音和token对 */
+	private longSentenceCache: {
+		py: ZiIndL;
+		matchPY: ZiIndAndKey[];
+		token: Token[];
+		nextResult: Map<Token, number>;
+	}[] = [];
+	private lastCommitOffset = 0;
+
+	private modelEvalLock = new Lock();
+
+	private max_count = 4000;
+	private rm_count = 20;
 	private omitContext = new deBounce(1000 * 10, async () => {
 		await this.modelEvalLock.acquire();
 		await this.tryOmitContext();
@@ -132,6 +131,13 @@ export class LIME {
 		this.model = model;
 		this.context = context;
 		this.sequence = context.getSequence();
+
+		this.max_count = context.contextSize - 64;
+		this.rm_count = Math.min(
+			this.max_count,
+			64,
+			Math.floor(this.max_count * 0.2),
+		);
 
 		console.log("创建拼音索引");
 
@@ -171,8 +177,10 @@ export class LIME {
 		}
 	}
 
-	async tryOmitContext() {
-		if (this.sequence.contextTokens.length <= max_count) {
+	private tryOmitContext = async (buffer = 64) => {
+		const maxCount = this.max_count - Math.max(buffer, 64);
+
+		if (this.sequence.contextTokens.length <= maxCount) {
 			return;
 		}
 		await this.modelEvalLock.acquire();
@@ -183,7 +191,7 @@ export class LIME {
 		const oldText = this.model.detokenize(oldTokens);
 		const newTokens = this.model
 			.tokenizer(oldText)
-			.slice(-(max_count - rm_count));
+			.slice(-(maxCount - this.rm_count));
 
 		await this.sequence.clearHistory();
 		await this.sequence.controlledEvaluate([
@@ -201,29 +209,29 @@ export class LIME {
 				},
 			],
 		]);
-		lastCommitOffset = this.sequence.contextTokens.length;
+		this.lastCommitOffset = this.sequence.contextTokens.length;
 		console.log(
 			`已优化上下文 ${oldTokenLen}->${this.sequence.contextTokens.length}`,
 		);
-	}
+	};
 
 	commit = (text: string, update = false, newT = true) => {
 		let new_text = "";
 		let nt = newT;
 
-		longSentenceCache = [];
+		this.longSentenceCache = [];
 
 		if (update) {
-			if (text.startsWith(last_context_data.context)) {
-				new_text = text.slice(last_context_data.context.length);
-				last_context_data.context = text;
+			if (text.startsWith(this.last_context_data.context)) {
+				new_text = text.slice(this.last_context_data.context.length);
+				this.last_context_data.context = text;
 			} else {
 				new_text = text;
 				nt = true;
 			}
 		}
 		if (nt) {
-			last_context_data.context = "";
+			this.last_context_data.context = "";
 			if (update === false) {
 				new_text = text;
 			}
@@ -232,7 +240,7 @@ export class LIME {
 
 		if (newT) this.add_user_word(text);
 
-		user_context.push(new_text);
+		this.user_context.push(new_text);
 
 		// todo shift context
 
@@ -247,10 +255,11 @@ export class LIME {
 			// todo 根据缓存判断，比如长句实际上已经近似提交了
 			await this.sequence.eraseContextTokenRanges([
 				{
-					start: lastCommitOffset,
+					start: this.lastCommitOffset,
 					end: this.sequence.contextTokens.length,
 				},
 			]);
+			await this.tryOmitContext(pre.length + 1);
 			const res = await this.sequence.controlledEvaluate([
 				...pre,
 				[
@@ -262,8 +271,8 @@ export class LIME {
 					},
 				],
 			]);
-			last_result = res.at(-1)?.next.probabilities;
-			lastCommitOffset = this.sequence.contextTokens.length;
+			this.last_result = res.at(-1)?.next.probabilities;
+			this.lastCommitOffset = this.sequence.contextTokens.length;
 			release();
 		})();
 
@@ -272,16 +281,16 @@ export class LIME {
 
 	reset_context = async () => {
 		await this.modelEvalLock.acquire();
-		user_context.length = 0;
-		last_context_data.context = "";
-		y用户词.clear();
+		this.user_context.length = 0;
+		this.last_context_data.context = "";
+		this.y用户词.clear();
 		await this.sequence.clearHistory();
 		await this.init_ctx();
 	};
 
 	getEvalResult = async () => {
 		await this.modelEvalLock.acquire();
-		return last_result;
+		return this.last_result;
 	};
 
 	detoken = (token: Token) => {
@@ -291,14 +300,14 @@ export class LIME {
 	add_user_word = (w: string) => {
 		const ts = this.model.tokenizer(w);
 		if (ts.length === 0) return false;
-		const l = y用户词.get(ts[0]) ?? [];
+		const l = this.y用户词.get(ts[0]) ?? [];
 		for (const exist of l) {
 			if (exist.length !== ts.length) continue;
 			const same = exist.every((v, i) => v === ts[i]);
 			if (same) return false;
 		}
 		l.push(ts);
-		y用户词.set(ts[0], l);
+		this.y用户词.set(ts[0], l);
 		return true;
 	};
 
@@ -310,7 +319,7 @@ export class LIME {
 			return { candidates: [] };
 		}
 
-		if (!last_result) {
+		if (!this.last_result) {
 			return { candidates: [] };
 		}
 
@@ -359,7 +368,7 @@ export class LIME {
 			}
 			return new_last_result;
 		};
-		const new_last_result = filterByPinyin(pinyin_input, last_result);
+		const new_last_result = filterByPinyin(pinyin_input, this.last_result);
 
 		// 自定义用户词
 		for (const [
@@ -368,14 +377,14 @@ export class LIME {
 		] of new_last_result) {
 			const rmpy = pinyin_input.slice(token_pinyin.length).map((v) => v[0].ind);
 
-			if (op?.userWord && rmpy.length > 0 && y用户词.has(token_id)) {
+			if (op?.userWord && rmpy.length > 0 && this.y用户词.has(token_id)) {
 				type li = {
 					ppy: ZiIndAndKey[];
 					tkids: Token[];
 					remainids: Token[];
 				};
 				let lis: li[] = [];
-				for (const n of y用户词.get(token_id) || []) {
+				for (const n of this.y用户词.get(token_id) || []) {
 					lis.push({
 						ppy: structuredClone(token_pinyin),
 						tkids: [token_id],
@@ -462,14 +471,14 @@ export class LIME {
 			const { py: token_pinyin, prob: token_prob } = _r;
 
 			if (pinyin_input.length === token_pinyin.length) {
-				longSentenceCache = [];
+				this.longSentenceCache = [];
 				return;
 			}
 
 			let sameCacheLen = 0;
 			let pyIndex = 0;
 
-			for (const [i, cache] of longSentenceCache.entries()) {
+			for (const [i, cache] of this.longSentenceCache.entries()) {
 				const cpyl = cache.py;
 				const inputPyl = pinyin_input.slice(pyIndex, pyIndex + cpyl.length);
 				if (JSON.stringify(cpyl) !== JSON.stringify(inputPyl)) {
@@ -478,18 +487,21 @@ export class LIME {
 				sameCacheLen = i + 1;
 				pyIndex += cpyl.length;
 			}
-			const sameCache = longSentenceCache.slice(0, sameCacheLen);
+			const sameCache = this.longSentenceCache.slice(0, sameCacheLen);
 			const cacheTokens = sameCache.flatMap((i) => i.token);
 			if (
 				this.sequence.contextTokens
-					.slice(lastCommitOffset, lastCommitOffset + cacheTokens.length)
+					.slice(
+						this.lastCommitOffset,
+						this.lastCommitOffset + cacheTokens.length,
+					)
 					.join(",") !== cacheTokens.join(",")
 			) {
 				console.error("长句缓存不匹配");
 			}
 			await this.sequence.eraseContextTokenRanges([
 				{
-					start: lastCommitOffset + cacheTokens.length,
+					start: this.lastCommitOffset + cacheTokens.length,
 					end: this.sequence.contextTokens.length,
 				},
 			]);
@@ -500,7 +512,7 @@ export class LIME {
 				console.error("erase error");
 			}
 
-			longSentenceCache = longSentenceCache.slice(0, sameCacheLen);
+			this.longSentenceCache = this.longSentenceCache.slice(0, sameCacheLen);
 
 			let prob = token_prob;
 			let rmpyx = pinyin_input.slice(
@@ -509,23 +521,23 @@ export class LIME {
 			const tklppy: ZiIndAndKey[] = [...sameCache.flatMap((i) => i.matchPY)];
 			const tkl: Token[] = [...cacheTokens];
 
-			function select(op: {
+			const select = (op: {
 				py: ZiIndL;
 				matchPY: ZiIndAndKey[];
 				token: Token[];
 				nextResult: Map<Token, number>;
-			}) {
+			}) => {
 				tklppy.push(...op.matchPY);
 				tkl.push(...op.token);
 				rmpyx = pinyin_input.slice(tklppy.length);
 
-				longSentenceCache.push({
+				this.longSentenceCache.push({
 					py: op.py,
 					matchPY: op.matchPY,
 					token: op.token,
 					nextResult: op.nextResult,
 				});
-			}
+			};
 
 			const addToken = async (token: Token) => {
 				return (
@@ -544,7 +556,7 @@ export class LIME {
 				);
 			};
 
-			if (longSentenceCache.length === 0)
+			if (this.longSentenceCache.length === 0)
 				select({
 					token: [token_id],
 					matchPY: token_pinyin,
@@ -554,8 +566,10 @@ export class LIME {
 
 			const l = rmpyx.length;
 
+			await this.tryOmitContext(l);
+
 			for (let _i = 0; _i < Math.min(l, 4); _i++) {
-				const next = longSentenceCache.at(-1)?.nextResult;
+				const next = this.longSentenceCache.at(-1)?.nextResult;
 				if (!next) {
 					console.log("no next");
 					break;
@@ -643,7 +657,7 @@ export class LIME {
 	};
 
 	init_ctx = async () => {
-		const prompt = get_context();
+		const prompt = this.pre_context + this.user_context.join("");
 		const tokens = this.model.tokenizer(prompt);
 		const [pre, last] = [tokens.slice(0, -1), tokens.at(-1)];
 		if (last === undefined) {
@@ -663,25 +677,26 @@ export class LIME {
 				},
 			],
 		]);
-		last_result = x.at(-1)?.next.probabilities;
-		lastCommitOffset = this.sequence.contextTokens.length;
+		this.last_result = x.at(-1)?.next.probabilities;
+		this.lastCommitOffset = this.sequence.contextTokens.length;
 	};
 
 	getUserData(): UserData {
 		return {
-			words: Object.fromEntries(y用户词),
-			context: user_context,
+			words: Object.fromEntries(this.y用户词),
+			context: this.user_context,
 		};
 	}
 	loadUserData(data: UserData) {
-		if (y用户词.size > 0 || user_context.length) {
+		if (this.y用户词.size > 0 || this.user_context.length) {
 			console.log("已存在用户数据");
 			return;
 		}
-		user_context.length = 0;
-		for (const i of data.context) user_context.push(i);
-		y用户词.clear();
-		for (const [k, v] of Object.entries(data.words)) y用户词.set(Number(k), v);
+		this.user_context.length = 0;
+		for (const i of data.context) this.user_context.push(i);
+		this.y用户词.clear();
+		for (const [k, v] of Object.entries(data.words))
+			this.y用户词.set(Number(k), v);
 	}
 }
 
