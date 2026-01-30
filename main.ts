@@ -222,7 +222,7 @@ export class LIME {
 		);
 	};
 
-	commit = (text: string, update = false, newT = true) => {
+	commit = async (text: string, update = false, newT = true) => {
 		let new_text = "";
 		let nt = newT;
 
@@ -256,9 +256,9 @@ export class LIME {
 
 		const pre = to_run.slice(0, -1);
 		const last = to_run[to_run.length - 1];
-		// 强制commit为异步执行，避免请求阻塞
+		const { release } = await this.modelEvalLock.lock();
+		// 强制commit耗时的部分为异步执行，避免请求阻塞
 		(async () => {
-			const { release } = await this.modelEvalLock.lock();
 			await this.tryOmitContext(pre.length + 1);
 			// todo 根据缓存判断，比如长句实际上已经近似提交了
 			await this.sequence.eraseContextTokenRanges([

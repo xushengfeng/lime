@@ -86,7 +86,7 @@ app.post("/commit", async (c) => {
 			throw new HTTPException(400, { message: "未提供文本内容" });
 		}
 
-		commit(text, shouldUpdate, isNew);
+		await commit(text, shouldUpdate, isNew);
 
 		return c.json({
 			message: "文本提交成功",
@@ -99,7 +99,7 @@ app.post("/commit", async (c) => {
 });
 
 // API: 提交文字 - GET 方法
-app.get("/commit", (c) => {
+app.get("/commit", async (c) => {
 	try {
 		const text = getParam(c, "text");
 		const isNew = getBoolParam(c, "new", true);
@@ -109,7 +109,7 @@ app.get("/commit", (c) => {
 			throw new HTTPException(400, { message: "未提供文本内容" });
 		}
 
-		commit(text, shouldUpdate, isNew);
+		await commit(text, shouldUpdate, isNew);
 
 		return c.json({
 			message: "文本提交成功",

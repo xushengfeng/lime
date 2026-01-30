@@ -15,7 +15,7 @@ Deno.test("长句识别", async () => {
 		);
 		console.log(c.candidates.slice(0, 5).map((i) => i.word));
 	}
-	commit("无");
+	await commit("无");
 	console.log(getUserData());
 });
 
@@ -35,6 +35,6 @@ Deno.test("长句识别，删除", async () => {
 		);
 		console.log(c.candidates.slice(0, 5).map((i) => i.word));
 	}
-	commit("无");
+	await commit("无");
 	console.log(getUserData());
 });

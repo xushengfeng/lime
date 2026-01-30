@@ -50,7 +50,7 @@ for (const src_t of test_text) {
 					console.log(i, src_t);
 				}
 			}
-			commit(src_t);
+			await commit(src_t);
 			break;
 		}
 	}

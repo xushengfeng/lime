@@ -28,7 +28,7 @@ async function test_text_offset(test_text: string[]) {
 					py = candidate.remainkeys.join("");
 					console.log(idx, text);
 					offset = offset + idx;
-					commit(text);
+					await commit(text);
 					break;
 				}
 			}

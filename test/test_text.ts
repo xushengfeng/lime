@@ -42,14 +42,14 @@ for (const t of test_text_x) {
 const test_text = text_text_g.map((v) => v.join(""));
 console.log(test_text);
 
-function match(src_t: string, r: Result) {
+async function match(src_t: string, r: Result) {
 	for (const [idx, candidate] of r.candidates.entries()) {
 		const text = candidate.word;
 		if (src_t.startsWith(text)) {
 			if (src_t === text) {
-				commit(text, true, true);
+				await commit(text, true, true);
 			} else {
-				commit(text, true, false);
+				await commit(text, true, false);
 			}
 			return { text, idx, rm: candidate.remainkeys };
 		}
@@ -79,10 +79,10 @@ for (let src_t of test_text) {
 	const len = src_t.length;
 	for (let _i = 0; _i < len; _i++) {
 		const c = await single_ci(keys_to_pinyin(py, { shuangpin: "自然码" }));
-		const m = match(src_t, c);
+		const m = await match(src_t, c);
 		if (m === undefined) {
 			if (!" ，。《》？！“”：/、".includes(src_t)) console.log("找不到", src_t);
-			commit(src_t, false, true);
+			await commit(src_t, false, true);
 			continue;
 		}
 		keyCount++; // confirm
