@@ -41,9 +41,8 @@ const user_context: string[] = [];
 const last_context_data = { context: "" };
 const y用户词 = new Map<number, Array<Array<number>>>();
 
-// 似乎框架的移除token做得不错，就不自己实现了
-// const max_count = 4000;
-// const rm_count = Math.min(max_count, 64, Math.floor(max_count * 0.2));
+const max_count = 4000;
+const rm_count = Math.min(max_count, 64, Math.floor(max_count * 0.2));
 
 let last_result: Map<Token, number> | undefined;
 /** 长句补全，记录拼音和token对 */
@@ -88,7 +87,7 @@ export async function loadModel(op?: { modelPath?: string }) {
 		modelPath: modelPath,
 	});
 	const context = await model.createContext({
-		contextSize: { max: 4096 },
+		contextSize: { max: max_count },
 	});
 	console.log("加载完成");
 
@@ -115,6 +114,11 @@ export class LIME {
 	unIndexedZi = new Map<string, Set<string>>();
 
 	modelEvalLock = new Lock();
+
+	private omitContext = new deBounce(1000 * 10, async () => {
+		await this.modelEvalLock.acquire();
+		await this.tryOmitContext();
+	});
 
 	constructor({
 		model,
@@ -165,6 +169,42 @@ export class LIME {
 				"等",
 			);
 		}
+	}
+
+	async tryOmitContext() {
+		if (this.sequence.contextTokens.length <= max_count) {
+			return;
+		}
+		await this.modelEvalLock.acquire();
+		const oldTokenLen = this.sequence.contextTokens.length;
+
+		// 输入分词可能有些情况不是像分词器那样的切分，会影响模型性能，这里重编码分词
+		const oldTokens = this.sequence.contextTokens.slice();
+		const oldText = this.model.detokenize(oldTokens);
+		const newTokens = this.model
+			.tokenizer(oldText)
+			.slice(-(max_count - rm_count));
+
+		await this.sequence.clearHistory();
+		await this.sequence.controlledEvaluate([
+			...newTokens.slice(0, -1),
+			[
+				// biome-ignore lint/style/noNonNullAssertion: none
+				newTokens.at(-1)!,
+				{
+					generateNext: {
+						probabilities: true,
+						options: {
+							topK: Infinity,
+						},
+					},
+				},
+			],
+		]);
+		lastCommitOffset = this.sequence.contextTokens.length;
+		console.log(
+			`已优化上下文 ${oldTokenLen}->${this.sequence.contextTokens.length}`,
+		);
 	}
 
 	commit = (text: string, update = false, newT = true) => {
@@ -227,7 +267,7 @@ export class LIME {
 			release();
 		})();
 
-		// todo trim context reset
+		this.omitContext.reset();
 	};
 
 	reset_context = async () => {
@@ -276,6 +316,7 @@ export class LIME {
 
 		const c: Candidate[] = [];
 
+		await this.tryOmitContext();
 		await this.modelEvalLock.acquire();
 
 		const filterByPinyin = (
@@ -593,9 +634,7 @@ export class LIME {
 
 		c.sort((a, b) => b.pinyin.length - a.pinyin.length);
 
-		console.log("token长度", this.sequence.contextTokens.length);
-
-		// todo trim_context.reset()
+		this.omitContext.reset();
 
 		if (c.length === 0) {
 			console.log("is empty");
@@ -643,5 +682,26 @@ export class LIME {
 		for (const i of data.context) user_context.push(i);
 		y用户词.clear();
 		for (const [k, v] of Object.entries(data.words)) y用户词.set(Number(k), v);
+	}
+}
+
+class deBounce {
+	private timeout: number | null = null;
+	private delay: number;
+	private fun = () => {};
+	constructor(delay: number, fun: () => void) {
+		this.delay = delay;
+		this.fun = fun;
+	}
+
+	reset() {
+		if (this.timeout) clearTimeout(this.timeout);
+		this.timeout = setTimeout(() => {
+			this.fun();
+		}, this.delay);
+	}
+
+	cancel() {
+		if (this.timeout) clearTimeout(this.timeout);
 	}
 }
