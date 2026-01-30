@@ -52,9 +52,17 @@ deno run -A key.ts
 
 这里使用[rime](https://rime.im/)作为前端。
 
-复制项目 rime 文件夹里面的内容到你的 rime 输入法配置里面。
+复制项目 rime 文件夹里面的内容到你的 rime 输入法配置里面。可以修改`default.yaml`的`schema_list`，添加`-  schema: llm`，或者创建`default.custom.yaml`，内容如下：
 
-安装 luasocket（见下面）。
+```yaml
+patch:
+    schema_list/+:
+        - schema: llm
+```
+
+总而言之，在rime里面启用`llm`这个schema。
+
+确保系统安装了 [curl](https://curl.se/download.html)，大部分系统如Windows（win10 1803+）、Linux、macOS 都自带了。
 
 创建密钥`deno run -A key.ts`，只需要创建一次，把输出的密钥改写在`llm_pinyin.lua`的`key`变量里面。
 
@@ -62,22 +70,13 @@ deno run -A key.ts
 
 注意，并不能与你其他的 rime 输入法结合，只能作为一个新的 rime 输入法。
 
-### 安装 luasocket
-
-对于 linux，使用`luarocks`安装：
-
-```
-sudo luarocks install luasocket \
-  LIBFLAG="-shared -llua"
-```
-
 ## 特性
 
 除了 ai 优化，还有一些输入法特性：
 
--   模糊音，可自定义转化表
--   双拼（自然码、搜狗、微软、小鹤、智能 ABC、拼音加加、紫光，自定义）
--   `'`号分割拼音
+- 模糊音，可自定义转化表
+- 双拼（自然码、搜狗、微软、小鹤、智能 ABC、拼音加加、紫光，自定义）
+- `'`号分割拼音
 
 ## 配置
 

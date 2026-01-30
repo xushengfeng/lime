@@ -1,7 +1,5 @@
 local json = require("json")
-local http = require("socket.http")
-local url = require("socket.url")
-local ltn12 = require("ltn12")
+local fetch_text = require("fetch_text")
 
 local key = "你的密钥"
 
@@ -11,36 +9,6 @@ local headers = {
 }
 
 local base_url = "http://127.0.0.1:5000"
-
-
-local function fetch_text(url, op)
-  local response_body = {}
-
-  local request_op = {
-    url = url,
-    sink = ltn12.sink.table(response_body)
-  }
-
-  if op then
-    for k, v in pairs(op) do
-      if k ~= 'url' then
-        request_op[k] = v
-      end
-    end
-  end
-
-  local source = request_op['source']
-  if source then
-    request_op['source'] = ltn12.source.string(source)
-  end
-
-  local _, code = http.request(request_op)
-
-  -- 将response_body数组转换为字符串
-  local response_str = table.concat(response_body)
-
-  return code, response_str
-end
 
 local translator = {}
 
