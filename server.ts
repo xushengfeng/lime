@@ -103,7 +103,8 @@ app.post("/commit", async (c) => {
 			throw new HTTPException(400, { message: "未提供文本内容" });
 		}
 
-		await commit(text, shouldUpdate, isNew);
+		const newT = await commit(text, shouldUpdate, isNew);
+
 		if (isNew) {
 			if (inputLog.lastZiTime !== null)
 				arrayLimtPush(
@@ -115,9 +116,7 @@ app.post("/commit", async (c) => {
 			inputLog.lastKeyTime = null;
 		}
 		{
-			const offset = isNew
-				? 0
-				: inputLog.lastCandidates.candidates.indexOf(text);
+			const offset = inputLog.lastCandidates.candidates.indexOf(newT ?? "");
 			if (offset !== -1 && inputLog.lastCandidates.time !== 0) {
 				const time = Date.now();
 				const ofts = inputLog.offsetTimes[offset] || [];

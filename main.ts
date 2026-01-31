@@ -302,6 +302,8 @@ export class LIME {
 		})();
 
 		this.omitContext.reset();
+
+		return new_text;
 	};
 
 	reset_context = async () => {
