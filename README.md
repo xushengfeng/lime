@@ -154,3 +154,11 @@ curl --request POST \
 ## 统计
 
 服务器会尝试统计按键的速度（按照相邻请求来计算）、实际输入文字时间、查找候选的时间等，通过`/inputlog`可以获取，可以使用中位数等或者平均数计算你自己相关的打字数据。
+
+## 高级配置
+
+### 使用ollama的模型
+
+添加`import { getOllamaModel } from "./utils/load_from_ollama.ts";`
+
+`initLIME`的参数中设置`modelPath`，添加`getOllamaModel('模型名称')`，名称为`ollama list`命令列出的模型名称。
