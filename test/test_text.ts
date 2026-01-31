@@ -14,12 +14,35 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const inputSpeedDataPath = path.join(__dirname, "input_speed_data.json");
 
 type SpeedData = {
-	offset: number;
+	offset: Record<number, number>;
 	keyCount: number;
-	commitCount: number;
 	bestCommitCount: number;
 	textLength: number;
 };
+
+function logOffset(offset: Record<number, number>) {
+	console.log(
+		"偏移",
+		Object.entries(offset)
+			.map(([k, v]) => `${k}: ${v}`)
+			.join(", "),
+		"非0偏移占比",
+		Object.entries(offset)
+			.filter(([k]) => Number(k) !== 0)
+			.reduce((a, [, v]) => a + v, 0) /
+			Object.values(offset).reduce((a, b) => a + b, 0),
+		"偏移加权",
+		Object.entries(offset)
+			.map(([k, v]) => Number(k) * v)
+			.reduce((a, b) => a + b, 0),
+		"偏移按键数",
+		Object.entries(offset)
+			.filter(([k]) => Number(k) !== 0)
+			.reduce((a, [, v]) => a + v, 0),
+		"实际选择数",
+		Object.entries(offset).reduce((a, [, v]) => a + v, 0),
+	);
+}
 
 async function run() {
 	const { commit, single_ci } = await initLIME({ ziInd: load_pinyin() });
@@ -75,9 +98,8 @@ async function run() {
 		return py;
 	}
 
-	let offset = 0;
+	const offset: Record<number, number> = {};
 	let keyCount = 0;
-	let commitCount = 0;
 	let bestCommitCount = 0;
 
 	for (let src_t of test_text) {
@@ -98,22 +120,18 @@ async function run() {
 				await commit(src_t, false, true);
 				continue;
 			}
-			commitCount++;
 			py = m.rm.map((i) => pinyin2shuangpin(i)).join("");
 			src_t = src_t.slice(m.text.length);
 			console.log(m.text, m.idx, m.idx !== 0 ? c.candidates[0].word : "");
-			offset += m.idx;
+			offset[m.idx] = (offset[m.idx] || 0) + 1;
 			if (src_t === "") break;
 		}
 	}
 
+	logOffset(offset);
 	console.log(
-		"偏移",
-		offset,
 		"按键数",
 		keyCount,
-		"选择数",
-		commitCount,
 		"理想选择数",
 		bestCommitCount,
 		"文章长度",
@@ -124,39 +142,48 @@ async function run() {
 		JSON.stringify({
 			offset,
 			keyCount,
-			commitCount,
 			bestCommitCount,
 			textLength: test_text_raw.length,
 		} as SpeedData),
 	);
 }
 
-function cal(
-	op: { keySpeed: number; offsetT: number } = { keySpeed: 80, offsetT: 100 },
-) {
+function cal(op: { keySpeed: number; offsetT: number[]; pageChangeT: number }) {
 	const data = JSON.parse(
 		Deno.readTextFileSync(inputSpeedDataPath),
 	) as SpeedData;
 
-	const { offset, keyCount, commitCount, bestCommitCount, textLength } = data;
+	const { offset, keyCount, bestCommitCount, textLength } = data;
 
 	const keySpeed = op.keySpeed; // 每分钟击键数
 	const keyT = (1000 * 60) / keySpeed;
-	const offsetT = op.offsetT; // 查找偏移需要的时间
+
+	const pageLen = op.offsetT.length;
+	const getOffsetT = (offset: number) => {
+		const p = offset % pageLen;
+		return (
+			op.offsetT[p] +
+			Math.floor(offset / pageLen) * ((op.offsetT.at(-1) || 0) + op.pageChangeT)
+		);
+	};
 
 	const speed =
 		textLength /
-		((keyCount * keyT + commitCount * keyT + offset * offsetT) / 1000 / 60);
+		((keyCount * keyT +
+			Object.entries(offset).reduce(
+				(acc, [k, v]) => acc + getOffsetT(Number(k)) * v,
+				0,
+			)) /
+			1000 /
+			60);
 	const bestSpeed =
-		textLength / ((keyCount * keyT + bestCommitCount * keyT) / 1000 / 60);
+		textLength /
+		((keyCount * keyT + bestCommitCount * op.offsetT[0]) / 1000 / 60);
 
+	logOffset(offset);
 	console.log(
-		"偏移",
-		offset,
 		"按键数",
 		keyCount,
-		"选择数",
-		commitCount,
 		"理想选择数",
 		bestCommitCount,
 		"文章长度",
@@ -171,7 +198,10 @@ function cal(
 if (Deno.args[0] === "cal") {
 	cal({
 		keySpeed: Number(Deno.args[1]) || 80,
-		offsetT: Number(Deno.args[2]) || 100,
+		pageChangeT: Number(Deno.args[1]) || 500,
+		offsetT: Deno.args.slice(2).map((i) => Number(i)) || [
+			400, 800, 1600, 2400, 3200,
+		],
 	});
 } else {
 	await run();
