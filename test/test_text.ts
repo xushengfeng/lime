@@ -13,6 +13,14 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const inputSpeedDataPath = path.join(__dirname, "input_speed_data.json");
 
+type SpeedData = {
+	offset: number;
+	keyCount: number;
+	commitCount: number;
+	bestCommitCount: number;
+	textLength: number;
+};
+
 async function run() {
 	const { commit, single_ci } = await initLIME({ ziInd: load_pinyin() });
 
@@ -69,33 +77,34 @@ async function run() {
 
 	let offset = 0;
 	let keyCount = 0;
-	let bestKeyCount = 0;
+	let commitCount = 0;
+	let bestCommitCount = 0;
 
 	for (let src_t of test_text) {
 		let py = pinyin(src_t, { type: "array", toneType: "none", v: true })
 			.map((i) => pinyin2shuangpin(i))
 			.join("");
+		const fuhao = " ，。《》？！“”：/、\n";
 
 		keyCount += py.length;
-		bestKeyCount += py.length;
+		if (!fuhao.includes(src_t)) bestCommitCount++;
+
 		const len = src_t.length;
 		for (let _i = 0; _i < len; _i++) {
 			const c = await single_ci(keys_to_pinyin(py, { shuangpin: "自然码" }));
 			const m = await match(src_t, c);
 			if (m === undefined) {
-				if (!" ，。《》？！“”：/、".includes(src_t))
-					console.log("找不到", src_t);
+				if (!fuhao.includes(src_t)) console.log("找不到", src_t);
 				await commit(src_t, false, true);
 				continue;
 			}
-			keyCount++; // confirm
+			commitCount++;
 			py = m.rm.map((i) => pinyin2shuangpin(i)).join("");
 			src_t = src_t.slice(m.text.length);
 			console.log(m.text, m.idx, m.idx !== 0 ? c.candidates[0].word : "");
 			offset += m.idx;
 			if (src_t === "") break;
 		}
-		bestKeyCount++;
 	}
 
 	console.log(
@@ -103,8 +112,10 @@ async function run() {
 		offset,
 		"按键数",
 		keyCount,
-		"理想按键数",
-		bestKeyCount,
+		"选择数",
+		commitCount,
+		"理想选择数",
+		bestCommitCount,
 		"文章长度",
 		test_text_raw.length,
 	);
@@ -113,33 +124,41 @@ async function run() {
 		JSON.stringify({
 			offset,
 			keyCount,
-			bestKeyCount,
+			commitCount,
+			bestCommitCount,
 			textLength: test_text_raw.length,
-		}),
+		} as SpeedData),
 	);
 }
 
 function cal(
 	op: { keySpeed: number; offsetT: number } = { keySpeed: 80, offsetT: 100 },
 ) {
-	const data = JSON.parse(Deno.readTextFileSync(inputSpeedDataPath));
+	const data = JSON.parse(
+		Deno.readTextFileSync(inputSpeedDataPath),
+	) as SpeedData;
 
-	const { offset, keyCount, bestKeyCount, textLength } = data;
+	const { offset, keyCount, commitCount, bestCommitCount, textLength } = data;
 
 	const keySpeed = op.keySpeed; // 每分钟击键数
 	const keyT = (1000 * 60) / keySpeed;
 	const offsetT = op.offsetT; // 查找偏移需要的时间
 
-	const speed = textLength / ((keyCount * keyT + offset * offsetT) / 1000 / 60);
-	const bestSpeed = textLength / ((bestKeyCount * keyT) / 1000 / 60);
+	const speed =
+		textLength /
+		((keyCount * keyT + commitCount * keyT + offset * offsetT) / 1000 / 60);
+	const bestSpeed =
+		textLength / ((keyCount * keyT + bestCommitCount * keyT) / 1000 / 60);
 
 	console.log(
 		"偏移",
 		offset,
 		"按键数",
 		keyCount,
-		"理想按键数",
-		bestKeyCount,
+		"选择数",
+		commitCount,
+		"理想选择数",
+		bestCommitCount,
 		"文章长度",
 		textLength,
 		`击键速度 ${keySpeed} kpm`,
