@@ -151,4 +151,12 @@ app.get("/inputlog", (c) => {
 	return c.json(inputLog);
 });
 
+app.post("/learntext", async (c) => {
+	const body = await c.req.text();
+	await commit(body, true, true);
+	return c.json({
+		message: "文本提交成功",
+	});
+});
+
 export default app;
