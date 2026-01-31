@@ -38,3 +38,10 @@ Deno.test("长句识别，删除", async () => {
 	await commit("无");
 	console.log(getUserData());
 });
+
+Deno.test("长词优先和长句生成", async () => {
+	await commit("在田野上，");
+	// 不知道为什么，qwen有个“农副”的token，就以此作为例子
+	const c = await single_ci(keys_to_pinyin("nsfu", { shuangpin: "自然码" }));
+	console.log(c.candidates.slice(0, 5));
+});

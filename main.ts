@@ -411,33 +411,43 @@ export class LIME {
 			for (const v of new_last_result.values()) {
 				v.prob /= scoreSum;
 			}
+
+			// 长词优先
+			const first = new_last_result.values().next().value;
+			if ((first?.prob ?? 0) < 0.9) {
+				const n = new Map() as typeof new_last_result;
+
+				let maxLen = 0;
+				let longToken: typeof first;
+				let longTokenId: ExToken | undefined;
+				for (const [k, v] of new_last_result) {
+					if (v.py.length > maxLen) {
+						maxLen = v.py.length;
+						longToken = v;
+						longTokenId = k;
+					}
+				}
+				let reOrder = false;
+				if (maxLen > 1 && longToken && longTokenId) {
+					n.set(longTokenId, longToken);
+					reOrder = true;
+				}
+				for (const [k, v] of new_last_result) {
+					if (reOrder === false || k !== longTokenId) {
+						n.set(k, v);
+					}
+				}
+				return n;
+			}
+
 			return new_last_result;
 		};
 		const new_last_result = filterByPinyin(pinyin_input, this.last_result);
 
 		// 首个候选补全为长句
-
-		let maxProbId = -1 as ExToken;
-		let maxProb = 0;
-		let lastLen = 0;
-		for (const [
-			token_id,
-			{ py: token_pinyin, prob: token_prob },
-		] of new_last_result) {
-			if (token_pinyin.length > lastLen) {
-				lastLen = token_pinyin.length;
-				maxProb = token_prob;
-				maxProbId = token_id;
-			} else if (token_pinyin.length === lastLen)
-				if (token_prob > maxProb) {
-					maxProb = token_prob;
-					maxProbId = token_id;
-				}
-		}
-
 		await (async () => {
-			const token_id = maxProbId;
-			if (token_id === -1) return;
+			const token_id = new_last_result.keys().next().value;
+			if (!token_id) return;
 			const _r = new_last_result.get(token_id);
 			if (!_r) return;
 			const { py: token_pinyin, prob: token_prob } = _r;
@@ -552,20 +562,7 @@ export class LIME {
 				}
 				const f = filterByPinyin(rmpyx, next);
 				if (f.size > 0) {
-					let long = 0;
-					for (const v of f.values()) {
-						if (v.py.length > long) long = v.py.length;
-					}
-					type ExtractMapEntry<M> =
-						M extends Map<infer K, infer V> ? [K, V] : never;
-					let first: ExtractMapEntry<typeof f> | undefined;
-					for (const ff of f.entries()) {
-						if (ff[1].py.length === long) {
-							first = ff;
-							break;
-						}
-					}
-					if ((first?.[1]?.prob ?? 0) < 0.05) first = f.entries().next().value;
+					const first = f.entries().next().value;
 					if (first) {
 						prob *= first[1].prob;
 						const tp = first[1];
