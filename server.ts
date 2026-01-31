@@ -1,4 +1,4 @@
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
 import { bearerAuth } from "hono/bearer-auth";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
@@ -17,6 +17,37 @@ const config = userConfig || (await import("./config.ts")).default;
 
 const { single_ci, commit, getUserData } = config.runner;
 
+function arrayLimtPush<T>(arr: T[], item: T, maxLen: number) {
+	arr.push(item);
+	if (arr.length <= maxLen) return;
+	for (let i = 0; i < arr.length - maxLen; i++) {
+		arr.shift();
+	}
+}
+
+const inputLogMaxLen = 10 ** 5;
+const inputLog: {
+	keyDeltaTimes: Array<number>;
+	lastKeyTime: number | null;
+	ziDeltaTimes: Array<number>;
+	lastZiTime: number | null;
+	lastCandidates: {
+		time: number;
+		candidates: string[];
+	};
+	offsetTimes: Record<number, Array<number>>;
+} = {
+	keyDeltaTimes: [],
+	lastKeyTime: null,
+	ziDeltaTimes: [],
+	lastZiTime: null,
+	lastCandidates: {
+		time: 0,
+		candidates: [],
+	},
+	offsetTimes: {},
+};
+
 const app = new Hono();
 
 app.use("*", logger());
@@ -34,9 +65,29 @@ app.post("/candidates", async (c) => {
 	const keys = body.keys || "";
 
 	console.log(keys);
+	const time = Date.now();
+	if (inputLog.lastKeyTime === null || keys.length === 1) {
+		inputLog.lastKeyTime = time;
+		inputLog.lastZiTime = time;
+	} else {
+		arrayLimtPush(
+			inputLog.keyDeltaTimes,
+			time - inputLog.lastKeyTime,
+			inputLogMaxLen,
+		);
+		inputLog.lastKeyTime = time;
+	}
 
 	const pinyinInput = config.key2ZiInd(keys);
 	const result = await single_ci(pinyinInput);
+
+	if (result.candidates.length <= 1) {
+		inputLog.lastZiTime = null;
+	} else
+		inputLog.lastCandidates = {
+			time,
+			candidates: result.candidates.map((c) => c.word),
+		};
 
 	return c.json(result);
 });
@@ -53,6 +104,35 @@ app.post("/commit", async (c) => {
 		}
 
 		await commit(text, shouldUpdate, isNew);
+		if (isNew) {
+			if (inputLog.lastZiTime !== null)
+				arrayLimtPush(
+					inputLog.ziDeltaTimes,
+					(Date.now() - inputLog.lastZiTime) / text.length,
+					inputLogMaxLen,
+				);
+			inputLog.lastZiTime = null;
+			inputLog.lastKeyTime = null;
+		}
+		{
+			const offset = isNew
+				? 0
+				: inputLog.lastCandidates.candidates.indexOf(text);
+			if (offset !== -1 && inputLog.lastCandidates.time !== 0) {
+				const time = Date.now();
+				const ofts = inputLog.offsetTimes[offset] || [];
+				arrayLimtPush(
+					ofts,
+					time - inputLog.lastCandidates.time,
+					inputLogMaxLen,
+				);
+				inputLog.offsetTimes[offset] = ofts;
+			}
+			inputLog.lastCandidates = {
+				time: 0,
+				candidates: [],
+			};
+		}
 
 		return c.json({
 			message: "文本提交成功",
@@ -66,6 +146,10 @@ app.post("/commit", async (c) => {
 
 app.get("/userdata", (c) => {
 	return c.json(getUserData());
+});
+
+app.get("/inputlog", (c) => {
+	return c.json(inputLog);
 });
 
 export default app;
