@@ -22,6 +22,8 @@ python 版本的见[python 分支](https://github.com/xushengfeng/lime/tree/pyth
 
 下载本项目，建议通过命令`git clone https://github.com/xushengfeng/lime`，后续可以获取更新，当然也可以下载压缩包
 
+建议切换到某个tag使用，或者在release上下载某个tag，这些tag是验证过的版本而不是中途开发可能存在问题的代码。
+
 ### 安装依赖
 
 ```shell
@@ -88,7 +90,7 @@ patch:
 
 ## 现状
 
-不支持长句输入，但输入一长串拼音后，可以中途选择来实现组句。
+长句的输入可能并不智能。
 
 输入太快可能会漏字母。
 
