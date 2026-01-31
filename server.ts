@@ -29,27 +29,6 @@ app.use(
 	}),
 );
 
-// 辅助函数：处理查询参数
-const getParam = (
-	c: Context,
-	key: string,
-	defaultValue: string = "",
-): string => {
-	const value = c.req.query(key);
-	return value ? decodeURIComponent(value) : defaultValue;
-};
-
-const getBoolParam = (
-	c: Context,
-	key: string,
-	defaultValue: boolean = false,
-): boolean => {
-	const value = c.req.query(key);
-	if (value === undefined) return defaultValue;
-	return value === "true";
-};
-
-// API: 获取候选词 - POST 方法
 app.post("/candidates", async (c) => {
 	const body = await c.req.json<{ keys?: string }>();
 	const keys = body.keys || "";
@@ -62,19 +41,6 @@ app.post("/candidates", async (c) => {
 	return c.json(result);
 });
 
-// API: 获取候选词 - GET 方法
-app.get("/candidates", async (c) => {
-	const keys = getParam(c, "keys");
-
-	console.log(keys);
-
-	const pinyinInput = config.key2ZiInd(keys);
-	const result = await single_ci(pinyinInput);
-
-	return c.json(result);
-});
-
-// API: 提交文字 - POST 方法
 app.post("/commit", async (c) => {
 	try {
 		const body = await c.req.json();
@@ -95,29 +61,6 @@ app.post("/commit", async (c) => {
 		if (error instanceof HTTPException) throw error;
 		console.error("提交文本失败:", error);
 		throw new HTTPException(400, { message: "请求数据格式错误" });
-	}
-});
-
-// API: 提交文字 - GET 方法
-app.get("/commit", async (c) => {
-	try {
-		const text = getParam(c, "text");
-		const isNew = getBoolParam(c, "new", true);
-		const shouldUpdate = getBoolParam(c, "update", false);
-
-		if (!text) {
-			throw new HTTPException(400, { message: "未提供文本内容" });
-		}
-
-		await commit(text, shouldUpdate, isNew);
-
-		return c.json({
-			message: "文本提交成功",
-		});
-	} catch (error) {
-		if (error instanceof HTTPException) throw error;
-		console.error("提交文本失败:", error);
-		throw new HTTPException(400, { message: "请求参数错误" });
 	}
 });
 
