@@ -415,15 +415,15 @@ export class LIME {
 		};
 		const new_last_result = filterByPinyin(pinyin_input, this.last_result);
 
-		// 常规
+		// 首个候选补全为长句
+
 		let maxProbId = -1 as ExToken;
 		let maxProb = 0;
 		let lastLen = 0;
 		for (const [
 			token_id,
-			{ py: token_pinyin, prob: token_prob, token },
+			{ py: token_pinyin, prob: token_prob },
 		] of new_last_result) {
-			const rmpy = pinyin_input.slice(token_pinyin.length).map((v) => v[0].ind);
 			if (token_pinyin.length > lastLen) {
 				lastLen = token_pinyin.length;
 				maxProb = token_prob;
@@ -433,19 +433,8 @@ export class LIME {
 					maxProb = token_prob;
 					maxProbId = token_id;
 				}
-			c.push({
-				pinyin: token_pinyin.map((v) => v.ind),
-				score: token_prob,
-				word: token,
-				remainkeys: rmpy,
-				preedit:
-					token_pinyin.map((v) => v.preeditShow).join(" ") +
-					(rmpy.length ? " " : ""),
-				consumedkeys: token_pinyin.map((v) => v.key).join("").length,
-			});
 		}
 
-		// 首个候选补全为长句
 		await (async () => {
 			const token_id = maxProbId;
 			if (token_id === -1) return;
@@ -609,6 +598,24 @@ export class LIME {
 				});
 			}
 		})();
+
+		// 常规
+		for (const [
+			_,
+			{ py: token_pinyin, prob: token_prob, token },
+		] of new_last_result) {
+			const rmpy = pinyin_input.slice(token_pinyin.length).map((v) => v[0].ind);
+			c.push({
+				pinyin: token_pinyin.map((v) => v.ind),
+				score: token_prob,
+				word: token,
+				remainkeys: rmpy,
+				preedit:
+					token_pinyin.map((v) => v.preeditShow).join(" ") +
+					(rmpy.length ? " " : ""),
+				consumedkeys: token_pinyin.map((v) => v.key).join("").length,
+			});
+		}
 
 		for (const py of pinyin_input[0]) {
 			const unIndexSet = this.unIndexedZi.get(py.ind);
