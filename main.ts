@@ -26,7 +26,7 @@ export type Result = {
 };
 
 type UserData = {
-	words: Record<number, Array<Array<number>>>;
+	words: Record<number, Array<number>>;
 	context: Array<string>;
 };
 
@@ -108,7 +108,6 @@ export class LIME {
 	private pre_context = "下面的内容主题多样";
 	user_context: string[] = [];
 	last_context_data = { context: "" };
-	private y用户词 = new Map<number, Array<Array<number>>>();
 	private userTokens = new Map<ExToken, Array<Token>>();
 	private userTokensFirstIndex = new Map<Token, Set<ExToken>>();
 	private tokenIndex = 0;
@@ -310,7 +309,7 @@ export class LIME {
 		await this.modelEvalLock.acquire();
 		this.user_context.length = 0;
 		this.last_context_data.context = "";
-		this.y用户词.clear();
+		this.userTokens.clear();
 		await this.sequence.clearHistory();
 		await this.init_ctx();
 	};
@@ -662,23 +661,23 @@ export class LIME {
 		this.lastCommitOffset = this.sequence.contextTokens.length;
 	};
 
-	getUserData(): UserData {
+	getUserData = () => {
 		return {
-			words: Object.fromEntries(this.y用户词),
+			words: Object.fromEntries(this.userTokens),
 			context: this.user_context,
-		};
-	}
-	loadUserData(data: UserData) {
-		if (this.y用户词.size > 0 || this.user_context.length) {
+		} as UserData;
+	};
+	loadUserData = (data: UserData) => {
+		if (this.userTokens.size > 0 || this.user_context.length) {
 			console.log("已存在用户数据");
 			return;
 		}
 		this.user_context.length = 0;
 		for (const i of data.context) this.user_context.push(i);
-		this.y用户词.clear();
+		this.userTokens.clear();
 		for (const [k, v] of Object.entries(data.words))
-			this.y用户词.set(Number(k), v);
-	}
+			this.userTokens.set(Number(k), v as Token[]);
+	};
 }
 
 class deBounce {
