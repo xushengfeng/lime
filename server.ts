@@ -15,7 +15,7 @@ try {
 
 const config = userConfig || (await import("./config.ts")).default;
 
-const { single_ci, commit, getUserData } = config.runner;
+const { single_ci, commit, getUserData, addUserWord } = config.runner;
 
 function arrayLimtPush<T>(arr: T[], item: T, maxLen: number) {
 	arr.push(item);
@@ -47,6 +47,24 @@ const inputLog: {
 	},
 	offsetTimes: {},
 };
+
+try {
+	const words = Deno.readTextFileSync(config.userWordsPath)
+		.split("\n")
+		.filter((w) => w.trim());
+	const textEncoder = new TextEncoder();
+	for (const [i, w] of words.entries()) {
+		addUserWord(w);
+		Deno.stdout.writeSync(
+			textEncoder.encode(
+				`加载用户词 ${(((i + 1) / words.length) * 100).toFixed(2)}%\r`,
+			),
+		);
+	}
+	console.log(`\n加载用户词完成，数量 ${words.length}`);
+} catch {
+	//
+}
 
 const app = new Hono();
 

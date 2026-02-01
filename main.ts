@@ -327,15 +327,23 @@ export class LIME {
 		return this.model.detokenize(this.exTokens(tokens));
 	};
 
+	checkAddUserWord = async (w: string) => {
+		const ts = this.model.tokenizer(w);
+		if (ts.length <= 1) return false;
+		if (ts.some((i) => !this.token_pinyin_map.has(i))) return false;
+		// 外部自己去重
+
+		// todo 根据模型值来看，有些词模型可以很轻松预测出来，不需要加入用户词库
+		return true;
+	};
+
 	addUserWord = (w: string) => {
 		const ts = this.model.tokenizer(w);
 		if (ts.length === 0) return false;
 
 		const token_id = this.tokenIndex++;
 
-		if (ts.some((i) => !this.token_pinyin_map.has(i))) return false;
-
-		this.userTokens.set(token_id, ts); // todo 去重
+		this.userTokens.set(token_id, ts);
 
 		const findex = this.userTokensFirstIndex.get(ts[0]) ?? new Set();
 		findex.add(token_id);
@@ -353,8 +361,6 @@ export class LIME {
 		if (this.last_result) {
 			this.last_result.set(token_id, 0);
 		}
-
-		console.log(`${w} -> ${token_id}`);
 
 		return true;
 	};
