@@ -33,6 +33,7 @@ export const inputLog: {
 	lastKeyTime: number | null;
 	ziDeltaTimes: Array<number>;
 	lastZiTime: number | null;
+	ziCount: number;
 	lastCandidates: {
 		time: number;
 		candidates: string[];
@@ -43,6 +44,7 @@ export const inputLog: {
 	lastKeyTime: null,
 	ziDeltaTimes: [],
 	lastZiTime: null,
+	ziCount: 0,
 	lastCandidates: {
 		time: 0,
 		candidates: [],
@@ -135,6 +137,7 @@ api.post("/commit", async (c) => {
 				);
 			inputLog.lastZiTime = null;
 			inputLog.lastKeyTime = null;
+			inputLog.ziCount += text.length;
 		}
 		{
 			const offset = inputLog.lastCandidates.candidates.indexOf(newT ?? "");

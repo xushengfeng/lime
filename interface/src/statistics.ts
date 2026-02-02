@@ -43,8 +43,7 @@ async function updateStatistics() {
 		),
 	);
 
-	const token = await limeInstance.userData();
-	const ziCount = token.context.reduce((sum, cur) => sum + cur.t.length, 0);
+	const ziCount = data.ziCount || 1;
 	statistics.add(p(`输入字数：${ziCount} 字`));
 	statistics.add(
 		p(
