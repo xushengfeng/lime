@@ -1,4 +1,5 @@
 import type { Result, UserData } from "../../main.ts";
+import type { inputLog } from "../../server.ts";
 
 export class lime {
 	private getPassword(): string {
@@ -42,5 +43,16 @@ export class lime {
 		});
 		const res = await data.json();
 		return res as UserData;
+	}
+	async inputlog() {
+		const data = await fetch(`${this.getServerUrl()}/inputlog`, {
+			method: "GET",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${this.getPassword()}`,
+			},
+		});
+		const res = await data.json();
+		return res as typeof inputLog;
 	}
 }

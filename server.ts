@@ -27,7 +27,7 @@ function arrayLimtPush<T>(arr: T[], item: T, maxLen: number) {
 }
 
 const inputLogMaxLen = 10 ** 5;
-const inputLog: {
+export const inputLog: {
 	keyDeltaTimes: Array<number>;
 	lastKeyTime: number | null;
 	ziDeltaTimes: Array<number>;
