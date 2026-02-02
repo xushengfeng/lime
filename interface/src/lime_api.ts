@@ -2,8 +2,20 @@ import type { Result, UserData } from "../../main.ts";
 import type { inputLog } from "../../server.ts";
 
 export class lime {
+	constructor() {
+		const p = this.getPassword();
+		if (!p) {
+			alert("请在 URL 中通过参数 passwd 指定访问密码，例如 ?passwd=你的密码");
+		}
+	}
 	private getPassword(): string {
 		return new URLSearchParams(location.search).get("passwd") || "";
+	}
+	private getHeader() {
+		return new Headers({
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${this.getPassword()}`,
+		});
 	}
 	private getServerUrl(): string {
 		const baseUrl = new URL(
@@ -15,10 +27,7 @@ export class lime {
 	async candidates(keys: string) {
 		const data = fetch(`${this.getServerUrl()}/candidates`, {
 			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${this.getPassword()}`,
-			},
+			headers: this.getHeader(),
 			body: JSON.stringify({ keys: keys }),
 		});
 		const res = await (await data).json();
@@ -27,20 +36,14 @@ export class lime {
 	async commit(word: string, newT: boolean) {
 		await fetch(`${this.getServerUrl()}/commit`, {
 			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${this.getPassword()}`,
-			},
+			headers: this.getHeader(),
 			body: JSON.stringify({ text: word, new: newT }),
 		});
 	}
 	async userData() {
 		const data = await fetch(`${this.getServerUrl()}/userdata`, {
 			method: "GET",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${this.getPassword()}`,
-			},
+			headers: this.getHeader(),
 		});
 		const res = await data.json();
 		return res as UserData;
@@ -48,10 +51,7 @@ export class lime {
 	async inputlog() {
 		const data = await fetch(`${this.getServerUrl()}/inputlog`, {
 			method: "GET",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${this.getPassword()}`,
-			},
+			headers: this.getHeader(),
 		});
 		const res = await data.json();
 		return res as typeof inputLog;
