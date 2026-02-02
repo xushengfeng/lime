@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { bearerAuth } from "hono/bearer-auth";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
+import { cors } from "hono/cors";
 import { verifyKey } from "./key.ts";
 import type { Config } from "./utils/config.d.ts";
 
@@ -68,6 +69,12 @@ try {
 
 const app = new Hono();
 
+app.use(
+	"*",
+	cors({
+		origin: "*",
+	}),
+);
 app.use("*", logger());
 app.use(
 	"/*",
