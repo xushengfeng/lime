@@ -1,10 +1,14 @@
 {
-	"dependencies": {
-		"hono": "^4.11.1",
-		"node-llama-cpp": "^3.14.5",
-		"pinyin-pro": "^3.27.0"
-	},
-	"devDependencies": {
-		"@types/node": "^25.0.2"
-	}
+    "scripts": {
+        "install_interface": "cd interface && deno install",
+        "build_interface": "cd interface && deno run build"
+    },
+    "dependencies": {
+        "hono": "^4.11.1",
+        "node-llama-cpp": "^3.14.5",
+        "pinyin-pro": "^3.27.0"
+    },
+    "devDependencies": {
+        "@types/node": "^25.0.2"
+    }
 }

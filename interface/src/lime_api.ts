@@ -6,10 +6,11 @@ export class lime {
 		return new URLSearchParams(location.search).get("passwd") || "";
 	}
 	private getServerUrl(): string {
-		return (
-			new URLSearchParams(location.search).get("server") ||
-			"http://localhost:5000"
+		const baseUrl = new URL(
+			new URLSearchParams(location.search).get("server") || location.origin,
 		);
+		baseUrl.pathname = "/api";
+		return baseUrl.toString();
 	}
 	async candidates(keys: string) {
 		const data = fetch(`${this.getServerUrl()}/candidates`, {

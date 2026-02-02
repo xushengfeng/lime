@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import { bearerAuth } from "hono/bearer-auth";
+import { cors } from "hono/cors";
+import { serveStatic } from "hono/deno";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
-import { cors } from "hono/cors";
 import { verifyKey } from "./key.ts";
 import type { Config } from "./utils/config.d.ts";
 
@@ -68,15 +69,8 @@ try {
 }
 
 const app = new Hono();
-
-app.use(
-	"*",
-	cors({
-		origin: "*",
-	}),
-);
-app.use("*", logger());
-app.use(
+const api = new Hono();
+api.use(
 	"/*",
 	bearerAuth({
 		verifyToken: (t) => {
@@ -85,7 +79,9 @@ app.use(
 	}),
 );
 
-app.post("/candidates", async (c) => {
+api.use("*", logger());
+
+api.post("/candidates", async (c) => {
 	const body = await c.req.json<{ keys?: string }>();
 	const keys = body.keys || "";
 
@@ -117,7 +113,7 @@ app.post("/candidates", async (c) => {
 	return c.json(result);
 });
 
-app.post("/commit", async (c) => {
+api.post("/commit", async (c) => {
 	try {
 		const body = await c.req.json();
 		const text = body.text || "";
@@ -168,20 +164,47 @@ app.post("/commit", async (c) => {
 	}
 });
 
-app.get("/userdata", (c) => {
+api.get("/userdata", (c) => {
 	return c.json(getUserData());
 });
 
-app.get("/inputlog", (c) => {
+api.get("/inputlog", (c) => {
 	return c.json(inputLog);
 });
 
-app.post("/learntext", async (c) => {
+api.post("/learntext", async (c) => {
 	const body = await c.req.text();
 	await commit(body, true, true);
 	return c.json({
 		message: "文本提交成功",
 	});
+});
+
+try {
+	Deno.statSync("./interface/dist");
+} catch {
+	console.log(
+		"没有构建前端，一些服务器页面可能不显示（不影响输入法），如果需要，运行：\ndeno run install_interface\ndeno run build_interface\n然后重启服务器",
+	);
+}
+
+app.use(
+	"*",
+	cors({
+		origin: "*",
+	}),
+);
+
+app.use("/*", serveStatic({ root: "./interface/dist" }));
+
+app.route("/api", api);
+
+app.post("/candidates", (c) => {
+	return api.fetch(c.req.raw);
+});
+
+app.post("/commit", (c) => {
+	return api.fetch(c.req.raw);
 });
 
 export default app;

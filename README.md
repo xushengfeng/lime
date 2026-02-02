@@ -50,6 +50,8 @@ deno serve -A --port 5000 server.ts
 deno run -A key.ts
 ```
 
+如果只是先看看这个项目的效果，可以跳转到下面的[说明](#前端)
+
 ## 作为输入法
 
 这里使用[rime](https://rime.im/)作为前端。
@@ -162,3 +164,13 @@ curl --request POST \
 添加`import { getOllamaModel } from "./utils/load_from_ollama.ts";`
 
 `initLIME`的参数中设置`modelPath`，添加`getOllamaModel('模型名称')`，名称为`ollama list`命令列出的模型名称。
+
+## 前端
+
+执行`deno run install_interface`和`deno run build_interface`
+
+重启服务器
+
+访问 http://127.0.0.1:5000/demo.html?passwd=你的密码 将有个模拟平时输入法界面的页面
+
+其他界面在 http://127.0.0.1:5000 可以导航，如上下文获取、输入统计计算等
