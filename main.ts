@@ -25,9 +25,9 @@ export type Result = {
 	candidates: Candidate[];
 };
 
-type UserData = {
+export type UserData = {
 	words: Record<number, Array<number>>;
-	context: Array<string>;
+	context: Array<{ t: string; token: Token }>;
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -106,7 +106,6 @@ export class LIME {
 	unIndexedZi = new Map<string, Set<string>>();
 
 	private pre_context = "下面的内容主题多样";
-	user_context: string[] = [];
 	last_context_data = { context: "" };
 	private userTokens = new Map<ExToken, Array<Token>>();
 	private userTokensFirstIndex = new Map<Token, Set<ExToken>>();
@@ -260,8 +259,6 @@ export class LIME {
 		}
 		if (!new_text) return;
 
-		this.user_context.push(new_text);
-
 		// todo shift context
 
 		const to_run = this.model.tokenizer(new_text);
@@ -307,7 +304,6 @@ export class LIME {
 
 	reset_context = async () => {
 		await this.modelEvalLock.acquire();
-		this.user_context.length = 0;
 		this.last_context_data.context = "";
 		this.userTokens.clear();
 		await this.sequence.clearHistory();
@@ -647,7 +643,7 @@ export class LIME {
 	};
 
 	init_ctx = async () => {
-		const prompt = this.pre_context + this.user_context.join("");
+		const prompt = this.pre_context;
 		const tokens = this.model.tokenizer(prompt);
 		const [pre, last] = [tokens.slice(0, -1), tokens.at(-1)];
 		if (last === undefined) {
@@ -674,16 +670,18 @@ export class LIME {
 	getUserData = () => {
 		return {
 			words: Object.fromEntries(this.userTokens),
-			context: this.user_context,
+			context: this.sequence.contextTokens.map((t) => ({
+				t: this.model.detokenize([t]) || "",
+				token: t,
+			})),
 		} as UserData;
 	};
 	loadUserData = (data: UserData) => {
-		if (this.userTokens.size > 0 || this.user_context.length) {
+		if (this.userTokens.size > 0) {
 			console.log("已存在用户数据");
 			return;
 		}
-		this.user_context.length = 0;
-		for (const i of data.context) this.user_context.push(i);
+		// todo
 		this.userTokens.clear();
 		for (const [k, v] of Object.entries(data.words))
 			this.userTokens.set(Number(k), v as Token[]);

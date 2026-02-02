@@ -1,47 +1,11 @@
-import { ele, input, p, txt, view } from "dkh-ui";
-import type { Result } from "../../main.ts";
+import { ele, p, txt, view } from "dkh-ui";
+import { lime } from "./lime_api.ts";
 import { nav } from "./nav.ts";
-
-class lime {
-	private getPassword(): string {
-		return (
-			passwd.gv || new URLSearchParams(location.search).get("passwd") || ""
-		);
-	}
-	private getServerUrl(): string {
-		return (
-			new URLSearchParams(location.search).get("server") ||
-			"http://localhost:5000"
-		);
-	}
-	async candidates(keys: string) {
-		const data = fetch(`${this.getServerUrl()}/candidates`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${this.getPassword()}`,
-			},
-			body: JSON.stringify({ keys: keys }),
-		});
-		const res = await (await data).json();
-		return res as Result;
-	}
-	async commit(word: string, newT: boolean) {
-		await fetch(`${this.getServerUrl()}/commit`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${this.getPassword()}`,
-			},
-			body: JSON.stringify({ text: word, new: newT }),
-		});
-	}
-}
 
 class ime {
 	private keys: string[] = [];
 	composing = false;
-	candidates: Result["candidates"] = [];
+	candidates: Awaited<ReturnType<lime["candidates"]>>["candidates"] = [];
 	private limeInstance = new lime();
 
 	private jilieWord: string = "";
@@ -141,8 +105,6 @@ nav.addInto();
 ele("h1").add("LIME 交互演示").addInto();
 
 p("大模型优化输入法联想").addInto();
-
-const passwd = input("password").addInto();
 
 const inputArea = view()
 	.attr({ tabIndex: 1 })
