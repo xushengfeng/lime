@@ -11,7 +11,7 @@ const config: Config = {
 	runner: await initLIME({ ziInd: load_pinyin(), omitContext: true }),
 	key2ZiInd: (key: string) =>
 		keys_to_pinyin(key, {
-			shuangpin: "自然码",
+			shuangpin: false,
 			fuzzy: {
 				initial: {
 					c: "ch",
