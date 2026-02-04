@@ -471,8 +471,36 @@ export class LIME {
 				sameCacheLen = i + 1;
 				pyIndex += cpyl.length;
 			}
-			const sameCache = this.longSentenceCache.slice(0, sameCacheLen);
+			let sameCache = this.longSentenceCache.slice(0, sameCacheLen);
+			let rmpyx = pinyin_input.slice(
+				sameCache.flatMap((i) => i.matchPY).length,
+			);
+			{
+				const lc = this.longSentenceCache.slice(0, sameCacheLen);
+				const last = lc.at(-1);
+				if (last) {
+					const npy = last.py.concat(rmpyx);
+					const lastlast = lc.at(-2)?.nextResult || this.last_result;
+					if (lastlast) {
+						const f = filterByPinyin(npy, lastlast);
+						const first = f.entries().next().value;
+						if (first) {
+							if (first[0] !== last.token.at(-1)) {
+								sameCacheLen--;
+								sameCache = this.longSentenceCache.slice(0, sameCacheLen);
+								rmpyx = pinyin_input.slice(
+									sameCache.flatMap((i) => i.matchPY).length,
+								);
+							}
+						}
+					} else {
+						console.warn("no lastlast");
+					}
+				}
+			}
+
 			const cacheTokens = sameCache.flatMap((i) => i.token);
+			// todo 下面的判断需要展开
 			if (
 				this.sequence.contextTokens
 					.slice(
@@ -499,9 +527,6 @@ export class LIME {
 			this.longSentenceCache = this.longSentenceCache.slice(0, sameCacheLen);
 
 			let prob = token_prob;
-			let rmpyx = pinyin_input.slice(
-				sameCache.flatMap((i) => i.matchPY).length,
-			);
 			const tklppy: ZiIndAndKey[] = [...sameCache.flatMap((i) => i.matchPY)];
 			const tkl: ExToken[] = [...cacheTokens];
 

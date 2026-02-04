@@ -65,7 +65,7 @@ async function run() {
 			continue;
 		}
 		const last = text_text_g.at(-1);
-		if (last && last.length < 5) {
+		if (last) {
 			last.push(t.segment);
 		} else {
 			text_text_g.push([t.segment]);
@@ -113,6 +113,14 @@ async function run() {
 
 		const len = src_t.length;
 		for (let _i = 0; _i < len; _i++) {
+			// 模拟输入
+			if (_i === 0)
+				for (let _j = 1; _j < py.length; _j++) {
+					await single_ci(
+						keys_to_pinyin(py.slice(0, _j), { shuangpin: "自然码" }),
+					);
+				}
+
 			const c = await single_ci(keys_to_pinyin(py, { shuangpin: "自然码" }));
 			const m = await match(src_t, c);
 			if (m === undefined) {
