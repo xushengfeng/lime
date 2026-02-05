@@ -56,4 +56,11 @@ export class lime {
 		const res = await data.json();
 		return res as typeof inputLog;
 	}
+	async pushText(text: string) {
+		await fetch(`${this.getServerUrl()}/learntext`, {
+			method: "POST",
+			headers: this.getHeader(),
+			body: text,
+		});
+	}
 }
