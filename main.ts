@@ -123,7 +123,10 @@ export class LIME {
 
 	private modelEvalLock = new Lock();
 
+	/** 运行时触发 */
 	private max_count = 4000;
+	/** 空闲时触发，大任务，所以提前打算，触发值小一点 */
+	private smallerMaxCount = 3500;
 	private rm_count = 20;
 	private omitContext = new deBounce(1000 * 10, async () => {
 		await this.modelEvalLock.acquire();
@@ -148,10 +151,11 @@ export class LIME {
 		this.sequence = context.getSequence();
 
 		this.max_count = context.contextSize - 64;
+		this.smallerMaxCount =
+			this.max_count - Math.min(512, Math.floor(this.max_count * 0.1));
 		this.rm_count = Math.min(
-			this.max_count,
-			64,
-			Math.floor(this.max_count * 0.2),
+			this.smallerMaxCount - 64,
+			Math.floor(this.smallerMaxCount * 0.2),
 		);
 		if (!omitContext) this.omitContext.cancel();
 
@@ -199,10 +203,8 @@ export class LIME {
 		}
 	}
 
-	private tryOmitContext = async (buffer = 64) => {
-		const maxCount = this.max_count - Math.max(buffer, 64);
-
-		if (this.sequence.contextTokens.length <= maxCount) {
+	private tryOmitContext = async () => {
+		if (this.sequence.contextTokens.length <= this.smallerMaxCount) {
 			return;
 		}
 		const oldTokenLen = this.sequence.contextTokens.length;
@@ -212,7 +214,7 @@ export class LIME {
 		const oldText = this.model.detokenize(oldTokens);
 		const newTokens = this.model
 			.tokenizer(oldText)
-			.slice(-Math.max(maxCount - this.rm_count, 1));
+			.slice(-Math.max(this.smallerMaxCount - this.rm_count, 1));
 
 		await this.sequence.clearHistory();
 		await this.sequence.controlledEvaluate([
@@ -234,6 +236,22 @@ export class LIME {
 		console.log(
 			`已优化上下文 ${oldTokenLen}->${this.sequence.contextTokens.length}`,
 		);
+	};
+
+	// 快速从最新删除上下文，保证后面操作不爆
+	private fastTryOmitContext = async (buffer = 64) => {
+		const maxCount = this.max_count - Math.max(buffer, 64);
+
+		if (this.sequence.contextTokens.length <= maxCount) {
+			return;
+		}
+		await this.sequence.eraseContextTokenRanges([
+			{
+				start: maxCount,
+				end: this.sequence.contextTokens.length,
+			},
+		]);
+		this.lastCommitOffset = this.sequence.contextTokens.length;
 	};
 
 	commit = async (text: string, update = false, newT = true) => {
@@ -269,7 +287,7 @@ export class LIME {
 		const { release } = await this.modelEvalLock.lock();
 		// 强制commit耗时的部分为异步执行，避免请求阻塞
 		(async () => {
-			await this.tryOmitContext(pre.length + 1);
+			await this.fastTryOmitContext(pre.length + 1);
 			// todo 根据缓存判断，比如长句实际上已经近似提交了
 			await this.sequence.eraseContextTokenRanges([
 				{
@@ -373,7 +391,7 @@ export class LIME {
 		const c: Candidate[] = [];
 
 		await this.modelEvalLock.acquire();
-		await this.tryOmitContext();
+		await this.fastTryOmitContext(pinyin_input.length);
 
 		const filterByPinyin = (
 			pinyin_input: ZiIndL,
@@ -579,7 +597,7 @@ export class LIME {
 
 			const l = rmpyx.length;
 
-			await this.tryOmitContext(l);
+			await this.fastTryOmitContext(l);
 
 			for (let _i = 0; _i < Math.min(l, 4); _i++) {
 				const next = this.longSentenceCache.at(-1)?.nextResult;
