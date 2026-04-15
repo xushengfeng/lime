@@ -4,11 +4,23 @@ import { load_pinyin } from "./key_map/pinyin/gen_zi_pinyin.ts";
 import { keys_to_pinyin } from "./key_map/pinyin/keys_to_pinyin.ts";
 import { initLIME } from "./main.ts";
 import type { Config } from "./utils/config.d.ts";
+import { resortFeq } from "./tools/resort_feq.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const config: Config = {
-	runner: await initLIME({ ziInd: load_pinyin(), omitContext: true }),
+	runner: await initLIME({
+		ziInd: load_pinyin(),
+		omitContext: true,
+		afterReSort: [
+			resortFeq(
+				Deno.readTextFileSync(path.join(__dirname, "assets/hanzi/top2500.txt"))
+					.split("\n")
+					.filter((w) => w.trim()),
+				{ index: 4 },
+			),
+		],
+	}),
 	key2ZiInd: (key: string) =>
 		keys_to_pinyin(key, {
 			shuangpin: false,

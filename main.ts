@@ -12,7 +12,7 @@ import { ziid_in_ziid } from "./utils/ziind_in_ziind.ts";
 
 type ZiIndFunc = (zici: string) => string[][];
 
-type Candidate = {
+export type Candidate = {
 	word: string;
 	score: number;
 	pinyin: string[];
@@ -81,6 +81,7 @@ export async function initLIME(
 	op: Parameters<typeof loadModel>[0] & {
 		ziInd: { trans: ZiIndFunc; allSymbol: Set<string> };
 		omitContext?: boolean;
+		afterReSort?: Array<AfterReSortFunc>;
 	},
 ) {
 	const { model, context } = await loadModel(op);
@@ -89,12 +90,14 @@ export async function initLIME(
 		context,
 		ziInd: op.ziInd,
 		omitContext: op.omitContext,
+		afterReSort: op.afterReSort,
 	});
 	await lime.init_ctx();
 	return lime;
 }
 
 type ExToken = Token | number;
+export type AfterReSortFunc = (candidates: Candidate[]) => Candidate[];
 
 export class LIME {
 	model: LlamaModel;
@@ -121,6 +124,8 @@ export class LIME {
 	}[] = [];
 	private lastCommitOffset = 0;
 
+	private afterReSort: Array<AfterReSortFunc>;
+
 	private modelEvalLock = new Lock();
 
 	/** 运行时触发 */
@@ -140,11 +145,13 @@ export class LIME {
 		context,
 		ziInd,
 		omitContext,
+		afterReSort,
 	}: {
 		model: LlamaModel;
 		context: LlamaContext;
 		ziInd: { trans: ZiIndFunc; allSymbol: Set<string> };
 		omitContext?: boolean;
+		afterReSort?: Array<AfterReSortFunc>;
 	}) {
 		this.model = model;
 		this.context = context;
@@ -158,6 +165,8 @@ export class LIME {
 			Math.floor(this.smallerMaxCount * 0.2),
 		);
 		if (!omitContext) this.omitContext.cancel();
+
+		this.afterReSort = afterReSort ?? [];
 
 		console.log("创建拼音索引");
 
@@ -676,13 +685,17 @@ export class LIME {
 		}
 
 		c.sort((a, b) => b.pinyin.length - a.pinyin.length);
+		let tc = c;
+		for (const f of this.afterReSort) {
+			tc = f(tc);
+		}
 
 		this.omitContext.reset();
 
 		if (c.length === 0) {
 			console.log("is empty");
 		}
-		return { candidates: c };
+		return { candidates: tc };
 	};
 
 	init_ctx = async () => {
