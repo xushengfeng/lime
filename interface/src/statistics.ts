@@ -50,6 +50,8 @@ async function updateStatistics() {
 			`每个字按键数（不算候选选择键）：${(data.keyDeltaTimes.length / ziCount).toFixed(2)}`,
 		),
 	);
+	statistics.add(p("历史输入文本（仅供微调使用）："));
+	statistics.add(p(data.history));
 }
 
 export {};

@@ -39,6 +39,7 @@ export const inputLog: {
 		candidates: string[];
 	};
 	offsetTimes: Record<number, Array<number>>;
+	history: string; // 与直接从模型获取记录不同，模型有上下文限制，这里记录所有输入的文本，供后续微调使用
 } = {
 	keyDeltaTimes: [],
 	lastKeyTime: null,
@@ -50,6 +51,7 @@ export const inputLog: {
 		candidates: [],
 	},
 	offsetTimes: {},
+	history: "",
 };
 
 try {
@@ -138,6 +140,7 @@ api.post("/commit", async (c) => {
 			inputLog.lastZiTime = null;
 			inputLog.lastKeyTime = null;
 			inputLog.ziCount += text.length;
+			inputLog.history += text;
 		}
 		{
 			const offset = inputLog.lastCandidates.candidates.indexOf(newT ?? "");
