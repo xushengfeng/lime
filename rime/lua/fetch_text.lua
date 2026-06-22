@@ -7,6 +7,10 @@
 ---@field timeout? number 超时时间（秒）
 ---@field [string] any 其他可能的选项（虽然curl不一定支持）
 
+local function shell_quote(value)
+    return "'" .. tostring(value):gsub("'", "'\"'\"'") .. "'"
+end
+
 ---使用curl发送HTTP请求并获取响应
 ---@param url string 请求的URL
 ---@param op FetchOptions 请求选项
@@ -14,19 +18,19 @@
 ---@return string|nil response_body 响应体字符串，失败时为错误信息
 local function fetch_text(url, op)
     -- 构建 curl 命令
-    local command = string.format("curl -s -w '\n%%{http_code}' --request %s --url '%s'",
-        op.method or "GET", url)
+    local command = string.format("curl -s -w '\n%%{http_code}' --request %s --url %s",
+        shell_quote(op.method or "GET"), shell_quote(url))
 
     -- 添加 headers
     if op.headers then
         for k, v in pairs(op.headers) do
-            command = command .. string.format(" --header '%s: %s'", k, v)
+            command = command .. string.format(" --header %s", shell_quote(k .. ": " .. v))
         end
     end
 
     -- 添加请求体
     if op.source then
-        command = command .. string.format(" --data '%s'", op.source)
+        command = command .. string.format(" --data %s", shell_quote(op.source))
     end
 
     -- 执行 curl 命令

@@ -745,7 +745,7 @@ export class LIME {
 }
 
 class deBounce {
-	private timeout: number | null = null;
+	private timeout: ReturnType<typeof setTimeout> | null = null;
 	private delay: number;
 	private fun = () => {};
 	private cancelled = false;
