@@ -10,11 +10,9 @@ python 版本的见[python 分支](https://github.com/xushengfeng/lime/tree/pyth
 
 > [!CAUTION]
 > 本项目的结构是运行一个 ai 服务器，输入法前端发送按键数据到服务器计算，然后返回你选择的文字\
-> 此过程目前为 明文 ，也就是未加密状态\
-> 你的按键输入可能包括了你大部分隐私\
-> 避免通信过程被其他软件截获，不要把服务器暴露在公网或局域网\
-> 不要把这个项目用于真实输入中，不要日用\
-> 如果你有适合 lua 和 ts 的方便又安全的加密方案，欢迎 issuse 或 pr
+> Rime 输入法前端可以使用 HiAE 对 `/candidates` 和 `/commit` 的请求与响应做加密认证\
+> 你的按键输入仍然可能包括了你大部分隐私，请不要把服务器暴露在公网或不可信局域网\
+> 如果关闭 HiAE 或使用开发 curl 示例，请只在本机可信环境中调试
 
 ## 运行
 
@@ -70,6 +68,10 @@ patch:
 
 创建密钥`deno run -A key.ts`，只需要创建一次，把输出的密钥改写在`llm_pinyin.lua`的`key`变量里面。
 
+默认开启 HiAE 加密。还需要把`llm_pinyin.lua`中的`hiae_payload`改成 lime 项目里`hiae_payload.ts`的绝对路径，例如`/home/me/lime/hiae_payload.ts`。加密模式下 Lua 端不会发送明文 bearer key，服务端会用`key.txt`里保存的 key hash 验证并解密请求。
+
+如果需要临时回退到旧的明文 bearer 请求，可以把`llm_pinyin.lua`里的`enable_hiae`改成`false`。
+
 开启服务器，切换到 llm 拼音输入法即可使用。
 
 注意，并不能与你其他的 rime 输入法结合，只能作为一个新的 rime 输入法。
@@ -108,6 +110,8 @@ patch:
 
 ## 开发
 
+Rime 前端默认使用 HiAE 加密。下面的 curl 示例仍保留为本机开发调试用的明文接口，需要传入 bearer key。
+
 可以发送按键让引擎分析
 
 ```shell
@@ -140,6 +144,7 @@ curl --request POST \
 curl --request POST \
   --url http://127.0.0.1:5000/commit \
   --header 'content-type: application/json' \
+  --header 'Authorization: Bearer your key' \
   --data '{
   "text": "你好世界"
 }'

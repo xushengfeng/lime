@@ -1,10 +1,17 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { bearerAuth } from "hono/bearer-auth";
 import { cors } from "hono/cors";
 import { serveStatic } from "hono/deno";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import { verifyKey } from "./key.ts";
+import {
+	decryptJsonWithSavedKey,
+	encryptJson,
+	HIAE_ENCRYPTION_HEADER,
+	HIAE_ENCRYPTION_VERSION,
+	type SecurePayload,
+} from "./utils/secure_payload.ts";
 import type { Config } from "./utils/config.d.ts";
 
 let userConfig: Config | undefined;
@@ -74,19 +81,48 @@ try {
 
 const app = new Hono();
 const api = new Hono();
-api.use(
-	"/*",
-	bearerAuth({
+api.use("/*", async (c, next) => {
+	const path = new URL(c.req.url).pathname;
+	const isEncryptedInputRequest = c.req.method === "POST" &&
+		c.req.header(HIAE_ENCRYPTION_HEADER) === HIAE_ENCRYPTION_VERSION &&
+		(path.endsWith("/candidates") || path.endsWith("/commit"));
+	if (isEncryptedInputRequest) {
+		return next();
+	}
+
+	const middleware = bearerAuth({
 		verifyToken: (t) => {
 			return verifyKey(t);
 		},
-	}),
-);
+	});
+	return middleware(c, next);
+});
 
 api.use("*", logger());
 
+async function readRequestJson<T>(
+	c: Context,
+): Promise<{ body: T; responseKey?: Uint8Array }> {
+	if (c.req.header(HIAE_ENCRYPTION_HEADER) !== HIAE_ENCRYPTION_VERSION) {
+		return { body: await c.req.json<T>() };
+	}
+
+	const payload = await c.req.json<SecurePayload>();
+	const decrypted = await decryptJsonWithSavedKey<T>(payload);
+	if (!decrypted) {
+		throw new HTTPException(401, { message: "HiAE 请求认证失败" });
+	}
+	return { body: decrypted.value, responseKey: decrypted.key };
+}
+
+function jsonResponse(c: Context, value: unknown, key?: Uint8Array) {
+	if (!key) return c.json(value);
+	c.header(HIAE_ENCRYPTION_HEADER, HIAE_ENCRYPTION_VERSION);
+	return c.json(encryptJson(value, key));
+}
+
 api.post("/candidates", async (c) => {
-	const body = await c.req.json<{ keys?: string }>();
+	const { body, responseKey } = await readRequestJson<{ keys?: string }>(c);
 	const keys = body.keys || "";
 
 	console.log(keys);
@@ -114,12 +150,16 @@ api.post("/candidates", async (c) => {
 			candidates: result.candidates.map((c) => c.word),
 		};
 
-	return c.json(result);
+	return jsonResponse(c, result, responseKey);
 });
 
 api.post("/commit", async (c) => {
 	try {
-		const body = await c.req.json();
+		const { body, responseKey } = await readRequestJson<{
+			text?: string;
+			new?: boolean;
+			update?: boolean;
+		}>(c);
 		const text = body.text || "";
 		const isNew = body.new ?? true;
 		const shouldUpdate = body.update ?? false;
@@ -160,9 +200,13 @@ api.post("/commit", async (c) => {
 			};
 		}
 
-		return c.json({
-			message: "文本提交成功",
-		});
+		return jsonResponse(
+			c,
+			{
+				message: "文本提交成功",
+			},
+			responseKey,
+		);
 	} catch (error) {
 		if (error instanceof HTTPException) throw error;
 		console.error("提交文本失败:", error);
