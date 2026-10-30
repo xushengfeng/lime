@@ -5,7 +5,7 @@ export default mergeConfig(
 	baseConfig,
 	defineConfig({
 		test: {
-			include: ["tests/integration/**/*.test.ts"],
+			include: ["bench/**/*.test.ts"],
 			testTimeout: 600_000,
 			hookTimeout: 600_000,
 			pool: "forks",

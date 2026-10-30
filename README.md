@@ -103,9 +103,8 @@ patch:
 - `src/config`：配置类型和默认配置
 - `interface`：Vite 前端
 - `tests/unit`：不需要模型的单元测试
-- `tests/integration`：需要 Qwen 模型的集成测试
+- `bench`：需要 Qwen 模型的防退化评测和速度基准
 - `tests/fixtures`：测试数据
-- `scripts`：评测脚本
 - `assets`、`rime`：词典、字频和 Rime 配置
 
 ## 现状
@@ -174,11 +173,13 @@ curl --request POST \
 
 ```shell
 pnpm test               # 单元测试，不需要模型
-pnpm test:integration   # 需要 Qwen 模型的集成测试
+pnpm bench              # 模型相关的防退化评测
+pnpm bench:speed        # 长句输入速度评测
+pnpm bench:word         # 用字准确率评测
 pnpm typecheck
 ```
 
-用 `pnpm exec tsx scripts/benchmark_text.ts` 运行长句评测，将会按照输入较长句子的拼音，然后去统计其索引、按键数、提交数量等记录下来，还提供了一个计算的交互方式，根据按键速度（kpm）等计算理论上的打字速度（cpm）等数据。
+`bench/` 里的结果不是严格的单元测试，而是用来观察排序和输入体验是否退化的基准；失败时通常需要人工判断模型或排序策略是否真的变差。`bench:speed` 会按长句拼音模拟输入，统计索引、按键数、提交数，并可按 kpm 估算 cpm。
 
 ## 统计
 

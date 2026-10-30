@@ -14,7 +14,9 @@
 		"userword": "tsx src/cli/preload_word.ts",
 		"test": "vitest run tests/unit",
 		"test:watch": "vitest tests/unit",
-		"test:integration": "vitest run --config vitest.integration.config.ts",
+		"bench": "vitest run --config vitest.bench.config.ts",
+		"bench:speed": "tsx bench/input_speed.ts",
+		"bench:word": "tsx bench/word_choice.ts",
 		"typecheck": "tsc --noEmit && pnpm --filter interface typecheck"
 	},
 	"dependencies": {
