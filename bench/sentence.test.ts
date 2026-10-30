@@ -2,9 +2,11 @@ import { expect, test } from "vitest";
 import { load_pinyin } from "../src/engine/key_map/pinyin/gen_zi_pinyin.ts";
 import { keys_to_pinyin } from "../src/engine/key_map/pinyin/keys_to_pinyin.ts";
 import { initLIME } from "../src/engine/main.ts";
+import { benchAlgorithm } from "./algorithm.ts";
 
 const { single_ci, commit, getUserData } = await initLIME({
 	ziInd: load_pinyin(),
+	algorithm: benchAlgorithm,
 });
 
 test("长句识别", async () => {

@@ -1,0 +1,1694 @@
+{
+  "model": "Qwen3-0.6B-IQ4_XS",
+  "note": "由 bench/generate_lime_v1_golden.ts 在重构前生成，用于冻结 lime-v1 行为。",
+  "cases": [
+    {
+      "name": "基础候选",
+      "keys": "nihao",
+      "input": [
+        [
+          {
+            "ind": "ni",
+            "key": "ni",
+            "preeditShow": "ni"
+          }
+        ],
+        [
+          {
+            "ind": "hao",
+            "key": "hao",
+            "preeditShow": "hao"
+          }
+        ]
+      ],
+      "candidates": [
+        {
+          "word": "你好",
+          "pinyin": [
+            "ni",
+            "hao"
+          ],
+          "remainkeys": [],
+          "preedit": "ni hao",
+          "consumedkeys": 5,
+          "score": 0.01718759163400273
+        },
+        {
+          "word": "呢",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.7545665271864
+        },
+        {
+          "word": "你",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.2065102113128882
+        },
+        {
+          "word": "拟",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.010484453374760125
+        },
+        {
+          "word": "泥",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.002972269581767537
+        },
+        {
+          "word": "尼",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.0029404725931894775
+        },
+        {
+          "word": "逆",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.0016669901401688775
+        },
+        {
+          "word": "疑",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.0016041043557025135
+        },
+        {
+          "word": "昵",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.0004426023853813334
+        },
+        {
+          "word": "擬",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.00036368956608739115
+        },
+        {
+          "word": "妳",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.000329249333675763
+        },
+        {
+          "word": "腻",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.0002818480866691761
+        },
+        {
+          "word": "旎",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.000131459597226246
+        },
+        {
+          "word": "霓",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.0001088232799996133
+        },
+        {
+          "word": "匿",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.00008036302084311287
+        },
+        {
+          "word": "倪",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.00007058005378225318
+        },
+        {
+          "word": "麑",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.00004535313257459304
+        },
+        {
+          "word": "溺",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.00004081635916229347
+        },
+        {
+          "word": "妮",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.00003709841790998796
+        },
+        {
+          "word": "铌",
+          "pinyin": [
+            "ni"
+          ],
+          "remainkeys": [
+            "hao"
+          ],
+          "preedit": "ni ",
+          "consumedkeys": 2,
+          "score": 0.000030474915127449022
+        }
+      ]
+    },
+    {
+      "name": "长句补全",
+      "keys": "lqxyyuvsgobzfh",
+      "input": [
+        [
+          {
+            "ind": "liu",
+            "key": "lq",
+            "preeditShow": "liu"
+          }
+        ],
+        [
+          {
+            "ind": "xing",
+            "key": "xy",
+            "preeditShow": "xing"
+          },
+          {
+            "ind": "xin",
+            "key": "xy",
+            "preeditShow": "xin"
+          }
+        ],
+        [
+          {
+            "ind": "yu",
+            "key": "yu",
+            "preeditShow": "yu"
+          }
+        ],
+        [
+          {
+            "ind": "zhong",
+            "key": "vs",
+            "preeditShow": "zhong"
+          },
+          {
+            "ind": "zong",
+            "key": "vs",
+            "preeditShow": "zong"
+          }
+        ],
+        [
+          {
+            "ind": "guo",
+            "key": "go",
+            "preeditShow": "guo"
+          }
+        ],
+        [
+          {
+            "ind": "bei",
+            "key": "bz",
+            "preeditShow": "bei"
+          }
+        ],
+        [
+          {
+            "ind": "fang",
+            "key": "fh",
+            "preeditShow": "fang"
+          },
+          {
+            "ind": "fan",
+            "key": "fh",
+            "preeditShow": "fan"
+          }
+        ]
+      ],
+      "candidates": [
+        {
+          "word": "流行于中国北方",
+          "pinyin": [
+            "liu",
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "remainkeys": [],
+          "preedit": "liu xing yu zhong guo bei fang",
+          "consumedkeys": 14,
+          "score": 0.5604433824085576
+        },
+        {
+          "word": "流行",
+          "pinyin": [
+            "liu",
+            "xing"
+          ],
+          "remainkeys": [
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu xing ",
+          "consumedkeys": 4,
+          "score": 0.6457673728850339
+        },
+        {
+          "word": "流星",
+          "pinyin": [
+            "liu",
+            "xing"
+          ],
+          "remainkeys": [
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu xing ",
+          "consumedkeys": 4,
+          "score": 0.021161296633833884
+        },
+        {
+          "word": "流",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.13284048717364103
+        },
+        {
+          "word": "六",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.0876607947178973
+        },
+        {
+          "word": "留",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.022530489308844746
+        },
+        {
+          "word": "柳",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.021790956954354377
+        },
+        {
+          "word": "刘",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.017585660605582962
+        },
+        {
+          "word": "陆",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.01592452249884997
+        },
+        {
+          "word": "鎏",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.011857378082101749
+        },
+        {
+          "word": "溜",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.007780301465939451
+        },
+        {
+          "word": "琉",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.005026560092062772
+        },
+        {
+          "word": "硫",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.003038380302269144
+        },
+        {
+          "word": "榴",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.002316712534425463
+        },
+        {
+          "word": "遛",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.002047315010185246
+        },
+        {
+          "word": "浏",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.0008589578527053381
+        },
+        {
+          "word": "碌",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.0008113377021727094
+        },
+        {
+          "word": "绺",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.0003590746537205397
+        },
+        {
+          "word": "旒",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.00013137343183198722
+        },
+        {
+          "word": "劉",
+          "pinyin": [
+            "liu"
+          ],
+          "remainkeys": [
+            "xing",
+            "yu",
+            "zhong",
+            "guo",
+            "bei",
+            "fang"
+          ],
+          "preedit": "liu ",
+          "consumedkeys": 2,
+          "score": 0.00009609542437362127
+        }
+      ]
+    },
+    {
+      "name": "长词优先",
+      "keys": "nsfu",
+      "input": [
+        [
+          {
+            "ind": "nong",
+            "key": "ns",
+            "preeditShow": "nong"
+          }
+        ],
+        [
+          {
+            "ind": "fu",
+            "key": "fu",
+            "preeditShow": "fu"
+          }
+        ]
+      ],
+      "candidates": [
+        {
+          "word": "农副",
+          "pinyin": [
+            "nong",
+            "fu"
+          ],
+          "remainkeys": [],
+          "preedit": "nong fu",
+          "consumedkeys": 4,
+          "score": 0.001151080845363462
+        },
+        {
+          "word": "农",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.3804226574345329
+        },
+        {
+          "word": "浓",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.3017657789893972
+        },
+        {
+          "word": "弄",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.26418642820870386
+        },
+        {
+          "word": "侬",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.026074101013274155
+        },
+        {
+          "word": "農",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.011211603974325435
+        },
+        {
+          "word": "濃",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.006238335595644804
+        },
+        {
+          "word": "脓",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.004708268852782034
+        },
+        {
+          "word": "哝",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.002837575006856814
+        },
+        {
+          "word": "秾",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.0012402903045866114
+        },
+        {
+          "word": "𬪩",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.00016387977453272124
+        },
+        {
+          "word": "䂇",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.0001
+        },
+        {
+          "word": "㶶",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.0001
+        },
+        {
+          "word": "㺜",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.0001
+        },
+        {
+          "word": "䁸",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.0001
+        },
+        {
+          "word": "䢉",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.0001
+        },
+        {
+          "word": "䵜",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.0001
+        },
+        {
+          "word": "儂",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.0001
+        },
+        {
+          "word": "噥",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.0001
+        },
+        {
+          "word": "挊",
+          "pinyin": [
+            "nong"
+          ],
+          "remainkeys": [
+            "fu"
+          ],
+          "preedit": "nong ",
+          "consumedkeys": 2,
+          "score": 0.0001
+        }
+      ]
+    },
+    {
+      "name": "渐近输入",
+      "keys": "veuiyigehfijdejuzi",
+      "input": [
+        [
+          {
+            "ind": "zhe",
+            "key": "ve",
+            "preeditShow": "zhe"
+          },
+          {
+            "ind": "ze",
+            "key": "ve",
+            "preeditShow": "ze"
+          }
+        ],
+        [
+          {
+            "ind": "shi",
+            "key": "ui",
+            "preeditShow": "shi"
+          },
+          {
+            "ind": "si",
+            "key": "ui",
+            "preeditShow": "si"
+          }
+        ],
+        [
+          {
+            "ind": "yi",
+            "key": "yi",
+            "preeditShow": "yi"
+          }
+        ],
+        [
+          {
+            "ind": "ge",
+            "key": "ge",
+            "preeditShow": "ge"
+          }
+        ],
+        [
+          {
+            "ind": "hen",
+            "key": "hf",
+            "preeditShow": "hen"
+          },
+          {
+            "ind": "heng",
+            "key": "hf",
+            "preeditShow": "heng"
+          }
+        ],
+        [
+          {
+            "ind": "chan",
+            "key": "ij",
+            "preeditShow": "chan"
+          },
+          {
+            "ind": "chang",
+            "key": "ij",
+            "preeditShow": "chang"
+          },
+          {
+            "ind": "can",
+            "key": "ij",
+            "preeditShow": "can"
+          },
+          {
+            "ind": "cang",
+            "key": "ij",
+            "preeditShow": "cang"
+          }
+        ],
+        [
+          {
+            "ind": "de",
+            "key": "de",
+            "preeditShow": "de"
+          }
+        ],
+        [
+          {
+            "ind": "ju",
+            "key": "ju",
+            "preeditShow": "ju"
+          }
+        ],
+        [
+          {
+            "ind": "zi",
+            "key": "zi",
+            "preeditShow": "zi"
+          },
+          {
+            "ind": "zhi",
+            "key": "zi",
+            "preeditShow": "zhi"
+          }
+        ]
+      ],
+      "candidates": [
+        {
+          "word": "这是一个很长的句子",
+          "pinyin": [
+            "zhe",
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chang",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "remainkeys": [],
+          "preedit": "zhe shi yi ge hen chang de ju zi",
+          "consumedkeys": 18,
+          "score": 0.0006334878943046184
+        },
+        {
+          "word": "这是一个",
+          "pinyin": [
+            "zhe",
+            "shi",
+            "yi",
+            "ge"
+          ],
+          "remainkeys": [
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe shi yi ge ",
+          "consumedkeys": 8,
+          "score": 0.03164770736479751
+        },
+        {
+          "word": "这是",
+          "pinyin": [
+            "zhe",
+            "shi"
+          ],
+          "remainkeys": [
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe shi ",
+          "consumedkeys": 4,
+          "score": 0.05606334182587805
+        },
+        {
+          "word": "则是",
+          "pinyin": [
+            "ze",
+            "shi"
+          ],
+          "remainkeys": [
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "ze shi ",
+          "consumedkeys": 4,
+          "score": 0.007970935521718995
+        },
+        {
+          "word": "这时",
+          "pinyin": [
+            "zhe",
+            "shi"
+          ],
+          "remainkeys": [
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe shi ",
+          "consumedkeys": 4,
+          "score": 0.00081290517311261
+        },
+        {
+          "word": "这事",
+          "pinyin": [
+            "zhe",
+            "shi"
+          ],
+          "remainkeys": [
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe shi ",
+          "consumedkeys": 4,
+          "score": 0.0007664313326213364
+        },
+        {
+          "word": "着实",
+          "pinyin": [
+            "zhe",
+            "shi"
+          ],
+          "remainkeys": [
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe shi ",
+          "consumedkeys": 4,
+          "score": 0.0001590972446324515
+        },
+        {
+          "word": "這是",
+          "pinyin": [
+            "zhe",
+            "shi"
+          ],
+          "remainkeys": [
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe shi ",
+          "consumedkeys": 4,
+          "score": 0.00008481747994801782
+        },
+        {
+          "word": "这",
+          "pinyin": [
+            "zhe"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe ",
+          "consumedkeys": 2,
+          "score": 0.609583011720115
+        },
+        {
+          "word": "咋",
+          "pinyin": [
+            "ze"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "ze ",
+          "consumedkeys": 2,
+          "score": 0.0842585749356598
+        },
+        {
+          "word": "遮",
+          "pinyin": [
+            "zhe"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe ",
+          "consumedkeys": 2,
+          "score": 0.06429885692648325
+        },
+        {
+          "word": "折",
+          "pinyin": [
+            "zhe"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe ",
+          "consumedkeys": 2,
+          "score": 0.036294607339433314
+        },
+        {
+          "word": "着",
+          "pinyin": [
+            "zhe"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe ",
+          "consumedkeys": 2,
+          "score": 0.02899534011530695
+        },
+        {
+          "word": "则",
+          "pinyin": [
+            "ze"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "ze ",
+          "consumedkeys": 2,
+          "score": 0.028862569837109272
+        },
+        {
+          "word": "者",
+          "pinyin": [
+            "zhe"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe ",
+          "consumedkeys": 2,
+          "score": 0.01274809695391604
+        },
+        {
+          "word": "侧",
+          "pinyin": [
+            "ze"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "ze ",
+          "consumedkeys": 2,
+          "score": 0.00681893683960317
+        },
+        {
+          "word": "浙",
+          "pinyin": [
+            "zhe"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe ",
+          "consumedkeys": 2,
+          "score": 0.0049460344043103024
+        },
+        {
+          "word": "泽",
+          "pinyin": [
+            "ze"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "ze ",
+          "consumedkeys": 2,
+          "score": 0.004605609914563893
+        },
+        {
+          "word": "哲",
+          "pinyin": [
+            "zhe"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe ",
+          "consumedkeys": 2,
+          "score": 0.00431853581239146
+        },
+        {
+          "word": "這",
+          "pinyin": [
+            "zhe"
+          ],
+          "remainkeys": [
+            "shi",
+            "yi",
+            "ge",
+            "hen",
+            "chan",
+            "de",
+            "ju",
+            "zi"
+          ],
+          "preedit": "zhe ",
+          "consumedkeys": 2,
+          "score": 0.003148664621949445
+        }
+      ]
+    },
+    {
+      "name": "用户词",
+      "keys": "bingdeng",
+      "input": [
+        [
+          {
+            "ind": "bing",
+            "key": "bing",
+            "preeditShow": "bing"
+          },
+          {
+            "ind": "bin",
+            "key": "bing",
+            "preeditShow": "bin"
+          }
+        ],
+        [
+          {
+            "ind": "deng",
+            "key": "deng",
+            "preeditShow": "deng"
+          },
+          {
+            "ind": "den",
+            "key": "deng",
+            "preeditShow": "den"
+          }
+        ]
+      ],
+      "candidates": [
+        {
+          "word": "冰灯",
+          "pinyin": [
+            "bing",
+            "deng"
+          ],
+          "remainkeys": [],
+          "preedit": "bing deng",
+          "consumedkeys": 8,
+          "score": 0.9403794520335703
+        },
+        {
+          "word": "冰灯",
+          "pinyin": [
+            "bing",
+            "deng"
+          ],
+          "remainkeys": [],
+          "preedit": "bing deng",
+          "consumedkeys": 8,
+          "score": 0
+        },
+        {
+          "word": "冰",
+          "pinyin": [
+            "bing"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bing ",
+          "consumedkeys": 4,
+          "score": 0.940847236934063
+        },
+        {
+          "word": "并",
+          "pinyin": [
+            "bing"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bing ",
+          "consumedkeys": 4,
+          "score": 0.027720009031266788
+        },
+        {
+          "word": "丙",
+          "pinyin": [
+            "bing"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bing ",
+          "consumedkeys": 4,
+          "score": 0.011976048311158217
+        },
+        {
+          "word": "屏",
+          "pinyin": [
+            "bing"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bing ",
+          "consumedkeys": 4,
+          "score": 0.004304169177418906
+        },
+        {
+          "word": "频",
+          "pinyin": [
+            "bin"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bin ",
+          "consumedkeys": 4,
+          "score": 0.003105768524880903
+        },
+        {
+          "word": "濒",
+          "pinyin": [
+            "bin"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bin ",
+          "consumedkeys": 4,
+          "score": 0.001902299748158529
+        },
+        {
+          "word": "滨",
+          "pinyin": [
+            "bin"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bin ",
+          "consumedkeys": 4,
+          "score": 0.0018345602797159293
+        },
+        {
+          "word": "宾",
+          "pinyin": [
+            "bin"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bin ",
+          "consumedkeys": 4,
+          "score": 0.001518169297839845
+        },
+        {
+          "word": "摒",
+          "pinyin": [
+            "bing"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bing ",
+          "consumedkeys": 4,
+          "score": 0.0011843048456071665
+        },
+        {
+          "word": "炳",
+          "pinyin": [
+            "bing"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bing ",
+          "consumedkeys": 4,
+          "score": 0.000989206744551758
+        },
+        {
+          "word": "殡",
+          "pinyin": [
+            "bin"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bin ",
+          "consumedkeys": 4,
+          "score": 0.0008844970605938132
+        },
+        {
+          "word": "病",
+          "pinyin": [
+            "bing"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bing ",
+          "consumedkeys": 4,
+          "score": 0.0007496306449047578
+        },
+        {
+          "word": "柄",
+          "pinyin": [
+            "bing"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bing ",
+          "consumedkeys": 4,
+          "score": 0.0005013242448101115
+        },
+        {
+          "word": "份",
+          "pinyin": [
+            "bin"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bin ",
+          "consumedkeys": 4,
+          "score": 0.0003873733916622046
+        },
+        {
+          "word": "槟",
+          "pinyin": [
+            "bin"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bin ",
+          "consumedkeys": 4,
+          "score": 0.0003401092565140967
+        },
+        {
+          "word": "饼",
+          "pinyin": [
+            "bing"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bing ",
+          "consumedkeys": 4,
+          "score": 0.00029919196499959713
+        },
+        {
+          "word": "並",
+          "pinyin": [
+            "bing"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bing ",
+          "consumedkeys": 4,
+          "score": 0.0002506122736055823
+        },
+        {
+          "word": "秉",
+          "pinyin": [
+            "bing"
+          ],
+          "remainkeys": [
+            "deng"
+          ],
+          "preedit": "bing ",
+          "consumedkeys": 4,
+          "score": 0.0002079889028564906
+        }
+      ]
+    }
+  ]
+}

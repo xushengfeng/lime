@@ -96,7 +96,9 @@ patch:
 
 ## 项目结构
 
-- `src/engine`：输入法核心，拼音索引、候选生成、模型加载
+- `src/engine/core`：共享引擎，模型会话、上下文、token 索引、用户词
+- `src/engine/algorithms`：候选算法，`lime-v1` 是当前版本
+- `src/engine/key_map`：按键到拼音/双拼索引
 - `src/server`：Hono 服务、鉴权、启动入口
 - `src/crypto`：HiAE 加解密
 - `src/cli`：密钥生成、用户词预加载等命令行工具
@@ -171,14 +173,35 @@ curl --request POST \
 
 添加类似`key_to_pinyin`的函数，用于把输入按键转换为文字索引，放在`src/engine/key_map`文件夹下。添加类似`load_pinyin`的函数，提供把文字转为索引的方法。
 
+### 添加候选算法
+
+共享引擎在 `src/engine/core`，候选算法在 `src/engine/algorithms`。新算法实现 `CandidateAlgorithm`，可以复用模型会话、上下文和 token 索引，但自己实现筛选、生成和排序。
+
+```ts
+import type { CandidateAlgorithm } from "./src/engine/algorithms/index.ts";
+
+const myAlgorithm: CandidateAlgorithm = {
+	id: "my-algorithm",
+	label: "我的算法",
+	async candidates(input, { session, index }) {
+		// 使用 session.lastResult / session.evaluateNext / index.pinyinOf 等
+		return { candidates: [] };
+	},
+};
+```
+
+在 `src/engine/algorithms/index.ts` 注册，或者在 `initLIME` 的 `algorithm` 参数里直接传实例/工厂。`lime-v1` 保留为当前算法的参考实现。
+
 ## 测试
 
 ```shell
 pnpm test               # 单元测试，不需要模型
 pnpm bench              # 模型相关的防退化评测
+pnpm bench:golden       # lime-v1 行为快照
 pnpm bench:compare      # LIME 与 baseline 对比
 pnpm bench:ablation     # LIME + 字频/调频/上下文/雾凇词库/Qwen token 一起跑
 pnpm bench:speed        # 长句输入速度评测
+pnpm bench:latency      # 按键延迟，标记超过 109ms 的场景
 pnpm bench:word         # 用字准确率评测
 pnpm typecheck
 ```
@@ -188,6 +211,8 @@ pnpm typecheck
 ```shell
 pnpm bench:compare --article bench/articles/孔乙己.txt
 pnpm bench:compare --limit 300 --json bench/results/冰灯-300.json
+pnpm bench:compare --algorithms lime-v1,lime-v2
+LIME_ALGORITHM=lime-v2 pnpm bench:speed
 pnpm bench:words        # 重新生成雾凇词表
 pnpm bench:tokens       # 重新导出 Qwen token 表
 ```

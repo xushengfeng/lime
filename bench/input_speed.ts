@@ -10,6 +10,7 @@ import {
 	shuangpinMaps,
 	generate_shuang_pinyin,
 } from "../src/engine/key_map/pinyin/shuangpin.ts";
+import { benchAlgorithm } from "./algorithm.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const inputSpeedDataPath = path.join(
@@ -49,7 +50,10 @@ function logOffset(offset: Record<number, number>) {
 }
 
 async function run() {
-	const { commit, single_ci } = await initLIME({ ziInd: load_pinyin() });
+	const { commit, single_ci } = await initLIME({
+		ziInd: load_pinyin(),
+		algorithm: benchAlgorithm,
+	});
 
 	const file = path.join(__dirname, "articles/冰灯.txt");
 

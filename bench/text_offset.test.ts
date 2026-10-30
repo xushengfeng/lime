@@ -3,8 +3,12 @@ import { expect, test } from "vitest";
 import { load_pinyin } from "../src/engine/key_map/pinyin/gen_zi_pinyin.ts";
 import { keys_to_pinyin } from "../src/engine/key_map/pinyin/keys_to_pinyin.ts";
 import { initLIME } from "../src/engine/main.ts";
+import { benchAlgorithm } from "./algorithm.ts";
 
-const { commit, single_ci, model } = await initLIME({ ziInd: load_pinyin() });
+const { commit, single_ci, model } = await initLIME({
+	ziInd: load_pinyin(),
+	algorithm: benchAlgorithm,
+});
 
 async function test_text_offset(test_text: string[]) {
 	let offset = 0;

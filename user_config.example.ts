@@ -12,6 +12,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const config: Config = {
 	runner: await initLIME({
 		ziInd: load_pinyin(),
+		// 也可以换成其他已注册算法 id，或直接传入 CandidateAlgorithm 实例/工厂
+		algorithm: "lime-v1",
 		omitContext: true,
 		afterReSort: [
 			resortFeq(

@@ -8,10 +8,15 @@
 pnpm bench
 ```
 
+- `lime_v1_golden.test.ts`：`lime-v1` 行为快照，防止重构改变候选
 - `text_offset.test.ts`：按词提交，统计候选偏移和耗时
 - `sentence.test.ts`：长句识别、删除、长词优先、处理等价
 - `user_word.test.ts`：用户词和智能组词
 - `ollama.test.ts`：检查本机 Ollama 模型
+
+`LIME_ALGORITHM=lime-v2 pnpm bench` 可以让这些评测切换到其他算法。
+
+`lime-v1` 的快照由 `pnpm bench:golden:gen` 生成。只有确认要更新参考行为时才运行它。
 
 ## 对比 / 消融
 
@@ -21,6 +26,7 @@ pnpm bench:compare --article bench/articles/孔乙己.txt
 pnpm bench:compare --engine baseline --baseline-mode rime
 pnpm bench:ablation
 pnpm bench:compare --limit 300 --json bench/results/冰灯-300.json
+pnpm bench:compare --algorithms lime-v1,lime-v2
 ```
 
 `compare.ts` 用 `input_speed` 的方式模拟长句输入，双方都使用自然码双拼：
@@ -32,7 +38,7 @@ pnpm bench:compare --limit 300 --json bench/results/冰灯-300.json
 - `雾凇词库（长词优先）`：rime-ice 词典 + 在线词频/上下文 + 长词偏置
 - `Qwen token 词表（长词优先）`：从模型 token 表导出的词表 + 长词偏置
 
-`--ablation` 会一次跑上面六项；不加则只跑 LIME 和一个选定模式的 baseline（默认 `rime`）。
+`--ablation` 会一次跑上面六项；不加则只跑 LIME 和一个选定模式的 baseline（默认 `rime`）。`--algorithms lime-v1,lime-v2` 会在同一篇文章上并排跑多个 LLM 算法。
 
 指标：
 
@@ -59,10 +65,12 @@ pnpm bench:tokens   # 从 Qwen GGUF 导出 bench/dicts/qwen_tokens.tsv
 
 ```shell
 pnpm bench:speed [cal <kpm> <翻页时间> ...]
+pnpm bench:latency
 pnpm bench:word
 ```
 
 - `input_speed.ts`：整篇文章模拟输入，输出候选偏移、按键数、提交数和速度估算
+- `latency.ts`：分别测普通筛选、渐近输入、commit、commit 后首键和长句补全；只报告并标记超过 109ms 的场景，不做断言
 - `word_choice.ts`：统计「他/她/它」「的/地/得」等易混字的首选率
 
 结果数据会写入 `tests/fixtures/input_speed_data.json`。

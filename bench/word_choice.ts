@@ -5,8 +5,12 @@ import { pinyin } from "pinyin-pro";
 import { load_pinyin } from "../src/engine/key_map/pinyin/gen_zi_pinyin.ts";
 import { keys_to_pinyin } from "../src/engine/key_map/pinyin/keys_to_pinyin.ts";
 import { initLIME } from "../src/engine/main.ts";
+import { benchAlgorithm } from "./algorithm.ts";
 
-const { commit, single_ci } = await initLIME({ ziInd: load_pinyin() });
+const { commit, single_ci } = await initLIME({
+	ziInd: load_pinyin(),
+	algorithm: benchAlgorithm,
+});
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

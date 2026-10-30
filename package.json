@@ -20,7 +20,10 @@
 		"bench:tokens": "tsx bench/export_tokens.ts",
 		"bench:words": "tsx bench/build_words.ts",
 		"bench:speed": "tsx bench/input_speed.ts",
+		"bench:latency": "tsx bench/latency.ts",
 		"bench:word": "tsx bench/word_choice.ts",
+		"bench:golden": "vitest run --config vitest.bench.config.ts bench/lime_v1_golden.test.ts",
+		"bench:golden:gen": "tsx bench/generate_lime_v1_golden.ts",
 		"typecheck": "tsc --noEmit && pnpm --filter interface typecheck"
 	},
 	"dependencies": {

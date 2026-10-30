@@ -4,7 +4,8 @@ import { parseArgs } from "node:util";
 import { pinyin } from "pinyin-pro";
 import { load_pinyin } from "../src/engine/key_map/pinyin/gen_zi_pinyin.ts";
 import { keys_to_pinyin } from "../src/engine/key_map/pinyin/keys_to_pinyin.ts";
-import { initLIME } from "../src/engine/main.ts";
+import { algorithmFactories } from "../src/engine/algorithms/index.ts";
+import { type AlgorithmId, initLIME } from "../src/engine/main.ts";
 import {
 	type BaselineMode,
 	DictionaryIME,
@@ -70,11 +71,13 @@ function emptyMetrics(name: string): Metrics {
 	};
 }
 
-async function runLIME(article: string): Promise<Metrics> {
-	const runner = await initLIME({ ziInd: load_pinyin() });
+async function runLIME(article: string, algorithm: AlgorithmId): Promise<Metrics> {
+	const runner = await initLIME({ ziInd: load_pinyin(), algorithm });
 	await runner.reset_context();
 
-	const metrics = emptyMetrics("LIME（模型）");
+	const metrics = emptyMetrics(
+		algorithm === "lime-v1" ? "LIME（模型）" : `LIME（${algorithm}）`,
+	);
 	const segments = segmentArticle(article);
 	const start = Date.now();
 
@@ -365,8 +368,21 @@ function printResults(results: Metrics[], articlePath: string) {
 }
 
 type RunConfig =
-	| { kind: "lime" }
+	| { kind: "lime"; algorithm: AlgorithmId }
 	| { kind: "baseline"; mode: BaselineMode };
+
+function parseAlgorithms(algorithm: string, algorithms?: string): AlgorithmId[] {
+	const list = algorithms?.split(",").map((item) => item.trim()) ?? [algorithm];
+	const result: AlgorithmId[] = [];
+	for (const item of list) {
+		if (!item) continue;
+		if (!(item in algorithmFactories)) {
+			throw new Error(`未知 algorithm: ${item}`);
+		}
+		result.push(item as AlgorithmId);
+	}
+	return result;
+}
 
 async function main() {
 	const { values } = parseArgs({
@@ -376,6 +392,8 @@ async function main() {
 			limit: { type: "string" },
 			engine: { type: "string", default: "both" },
 			"baseline-mode": { type: "string", default: "rime" },
+			algorithm: { type: "string", default: "lime-v1" },
+			algorithms: { type: "string" },
 			ablation: { type: "boolean", default: false },
 			json: { type: "string" },
 		},
@@ -388,10 +406,16 @@ async function main() {
 		article = Array.from(article).slice(0, limit).join("");
 	}
 
+	const algorithms = parseAlgorithms(
+		String(values.algorithm),
+		values.algorithms ? String(values.algorithms) : undefined,
+	);
 	const configs: RunConfig[] = [];
 	if (values.ablation) {
+		for (const algorithm of algorithms) {
+			configs.push({ kind: "lime", algorithm });
+		}
 		configs.push(
-			{ kind: "lime" },
 			{ kind: "baseline", mode: "base" },
 			{ kind: "baseline", mode: "adapt" },
 			{ kind: "baseline", mode: "bigram" },
@@ -405,7 +429,9 @@ async function main() {
 			throw new Error(`未知 baseline-mode: ${baselineMode}`);
 		}
 		if (engine === "lime" || engine === "both") {
-			configs.push({ kind: "lime" });
+			for (const algorithm of algorithms) {
+				configs.push({ kind: "lime", algorithm });
+			}
 		}
 		if (engine === "baseline" || engine === "both") {
 			configs.push({
@@ -421,7 +447,7 @@ async function main() {
 	const results: Metrics[] = [];
 	for (const config of configs) {
 		const result = config.kind === "lime"
-			? await runLIME(article)
+			? await runLIME(article, config.algorithm)
 			: runBaseline(article, config.mode);
 		results.push(result);
 	}
