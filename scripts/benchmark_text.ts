@@ -1,17 +1,21 @@
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pinyin } from "pinyin-pro";
-import { load_pinyin } from "../key_map/pinyin/gen_zi_pinyin.ts";
-import { keys_to_pinyin } from "../key_map/pinyin/keys_to_pinyin.ts";
-import { initLIME, type Result } from "../main.ts";
-import { generate_pinyin } from "../key_map/pinyin/all_pinyin.ts";
+import { load_pinyin } from "../src/engine/key_map/pinyin/gen_zi_pinyin.ts";
+import { keys_to_pinyin } from "../src/engine/key_map/pinyin/keys_to_pinyin.ts";
+import { initLIME, type Result } from "../src/engine/main.ts";
+import { generate_pinyin } from "../src/engine/key_map/pinyin/all_pinyin.ts";
 import {
 	shuangpinMaps,
 	generate_shuang_pinyin,
-} from "../key_map/pinyin/shuangpin.ts";
+} from "../src/engine/key_map/pinyin/shuangpin.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const inputSpeedDataPath = path.join(__dirname, "input_speed_data.json");
+const inputSpeedDataPath = path.join(
+	__dirname,
+	"../tests/fixtures/input_speed_data.json",
+);
 
 type SpeedData = {
 	offset: Record<number, number>;
@@ -47,10 +51,10 @@ function logOffset(offset: Record<number, number>) {
 async function run() {
 	const { commit, single_ci } = await initLIME({ ziInd: load_pinyin() });
 
-	const file = path.join(__dirname, "冰灯.txt");
+	const file = path.join(__dirname, "../tests/fixtures/冰灯.txt");
 
 	const seg = new Intl.Segmenter("zh-Hans", { granularity: "word" });
-	const test_text_raw = Deno.readTextFileSync(file);
+	const test_text_raw = readFileSync(file, "utf8");
 	const test_text_x = Array.from(seg.segment(test_text_raw));
 	const text_text_g: string[][] = [[]];
 	for (const t of test_text_x) {
@@ -145,7 +149,7 @@ async function run() {
 		"文章长度",
 		test_text_raw.length,
 	);
-	await Deno.writeTextFile(
+	writeFileSync(
 		inputSpeedDataPath,
 		JSON.stringify({
 			offset,
@@ -158,7 +162,7 @@ async function run() {
 
 function cal(op: { keySpeed: number; offsetT: number[]; pageChangeT: number }) {
 	const data = JSON.parse(
-		Deno.readTextFileSync(inputSpeedDataPath),
+		readFileSync(inputSpeedDataPath, "utf8"),
 	) as SpeedData;
 
 	const { offset, keyCount, bestCommitCount, textLength } = data;
@@ -203,11 +207,12 @@ function cal(op: { keySpeed: number; offsetT: number[]; pageChangeT: number }) {
 	);
 }
 
-if (Deno.args[0] === "cal") {
+if (process.argv[2] === "cal") {
+	const args = process.argv.slice(2);
 	cal({
-		keySpeed: Number(Deno.args[1]) || 80,
-		pageChangeT: Number(Deno.args[1]) || 500,
-		offsetT: Deno.args.slice(2).map((i) => Number(i)) || [
+		keySpeed: Number(args[1]) || 80,
+		pageChangeT: Number(args[1]) || 500,
+		offsetT: args.slice(2).map((i) => Number(i)) || [
 			400, 800, 1600, 2400, 3200,
 		],
 	});

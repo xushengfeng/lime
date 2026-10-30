@@ -1,5 +1,4 @@
-import type { Result, UserData } from "../../main.ts";
-import type { inputLog } from "../../server.ts";
+import type { InputLog, Result, UserData } from "../../src/shared/api.ts";
 
 export class lime {
 	constructor() {
@@ -54,7 +53,7 @@ export class lime {
 			headers: this.getHeader(),
 		});
 		const res = await data.json();
-		return res as typeof inputLog;
+		return res as InputLog;
 	}
 	async pushText(text: string) {
 		await fetch(`${this.getServerUrl()}/learntext`, {

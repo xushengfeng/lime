@@ -7,28 +7,18 @@ import {
 	type LlamaModel,
 	type Token,
 } from "node-llama-cpp";
+import type {
+	Candidate,
+	Result,
+	UserData as ApiUserData,
+} from "../shared/api.ts";
 import type { ZiIndAndKey, ZiIndL } from "./key_map/zi_ind.ts";
-import { ziid_in_ziid } from "./utils/ziind_in_ziind.ts";
+import { ziid_in_ziid } from "./ziind_in_ziind.ts";
 
 type ZiIndFunc = (zici: string) => string[][];
 
-export type Candidate = {
-	word: string;
-	score: number;
-	pinyin: string[];
-	remainkeys: string[];
-	preedit: string;
-	consumedkeys: number;
-};
-
-export type Result = {
-	candidates: Candidate[];
-};
-
-export type UserData = {
-	words: Record<number, Array<number>>;
-	context: Array<{ t: string; token: Token }>;
-};
+export type { Candidate, Result };
+export type UserData = ApiUserData<Token>;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -58,7 +48,7 @@ export async function loadModel(op?: {
 }) {
 	const modelPath =
 		op?.modelPath ??
-		path.join(__dirname, "../Qwen3-0.6B-GGUF/Qwen3-0.6B-IQ4_XS.gguf");
+		path.join(__dirname, "../../../Qwen3-0.6B-GGUF/Qwen3-0.6B-IQ4_XS.gguf");
 
 	const llama = await getLlama({
 		gpu: false,

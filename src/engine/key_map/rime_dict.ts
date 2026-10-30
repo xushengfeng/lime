@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
+
 export function get_dict(filepath: string) {
 	const l: Array<string> = [];
-	const texts = Deno.readTextFileSync(filepath).split("\n");
+	const texts = readFileSync(filepath, "utf8").split("\n");
 	let is_meta = false;
 	for (let i of texts) {
 		if (i.endsWith("\n")) {

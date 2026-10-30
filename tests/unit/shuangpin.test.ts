@@ -1,10 +1,10 @@
-import { assertEquals } from "@std/assert";
-import { generate_pinyin } from "../all_pinyin.ts";
+import { expect, test } from "vitest";
+import { generate_pinyin } from "../../src/engine/key_map/pinyin/all_pinyin.ts";
 import {
 	generate_shuang_pinyin,
 	type ShuangpinMap,
 	shuangpinMaps,
-} from "../shuangpin.ts";
+} from "../../src/engine/key_map/pinyin/shuangpin.ts";
 
 const all = generate_pinyin();
 
@@ -14,10 +14,10 @@ function check(shuangpinM: ShuangpinMap) {
 	for (const i of Object.values(shuangpin)) {
 		for (const p of i) as.delete(p);
 	}
-	assertEquals(as, new Set());
+	expect(as).toEqual(new Set());
 }
 
-Deno.test("generate shuangpin", () => {
+test("generate shuangpin", () => {
 	for (const [name, map] of Object.entries(shuangpinMaps)) {
 		console.log("测试双拼方案", name);
 		check(map);

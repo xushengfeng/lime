@@ -3,8 +3,9 @@ local fetch_text = require("fetch_text")
 
 local key = "你的密钥"
 local enable_hiae = true
--- 改为 lime 项目中 hiae_payload.ts 的绝对路径，例如：/home/me/lime/hiae_payload.ts
-local hiae_payload = "/path/to/lime/hiae_payload.ts"
+-- 改为 lime 项目中 dist/hiae_payload.mjs 的绝对路径，例如：/home/me/lime/dist/hiae_payload.mjs
+-- 需要先运行 pnpm build:hiae
+local hiae_payload = "/path/to/lime/dist/hiae_payload.mjs"
 
 local base_url = "http://127.0.0.1:5000"
 
@@ -15,7 +16,7 @@ local function shell_quote(value)
 end
 
 local function hiae_payload_json(mode, payload)
-  local command = "printf " .. shell_quote("%s") .. " " .. shell_quote(payload) .. " | deno run --quiet " ..
+  local command = "printf " .. shell_quote("%s") .. " " .. shell_quote(payload) .. " | node " ..
       shell_quote(hiae_payload) .. " --key " .. shell_quote(key) .. " --mode " .. shell_quote(mode)
   local handle = io.popen(command)
   if not handle then

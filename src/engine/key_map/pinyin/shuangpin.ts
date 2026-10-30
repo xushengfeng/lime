@@ -1,4 +1,4 @@
-import { getValue } from "../../utils/obj.ts";
+import { getValue } from "../../obj.ts";
 import { spilt_pinyin } from "./split_pinyin.ts";
 
 export type ShuangpinMap = {

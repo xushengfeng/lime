@@ -1,13 +1,13 @@
-import { assert } from "@std/assert";
-import { load_pinyin } from "../key_map/pinyin/gen_zi_pinyin.ts";
-import { keys_to_pinyin } from "../key_map/pinyin/keys_to_pinyin.ts";
-import { initLIME } from "../main.ts";
+import { expect, test } from "vitest";
+import { load_pinyin } from "../../src/engine/key_map/pinyin/gen_zi_pinyin.ts";
+import { keys_to_pinyin } from "../../src/engine/key_map/pinyin/keys_to_pinyin.ts";
+import { initLIME } from "../../src/engine/main.ts";
 
 const { single_ci, commit, getUserData } = await initLIME({
 	ziInd: load_pinyin(),
 });
 
-Deno.test("长句识别", async () => {
+test("长句识别", async () => {
 	const py = "veuiyigehfijdejuzi".split("");
 	for (let i = 0; i < py.length; i++) {
 		console.log(py.slice(0, i + 1).join(""));
@@ -20,7 +20,7 @@ Deno.test("长句识别", async () => {
 	console.log(getUserData());
 });
 
-Deno.test("长句识别，删除", async () => {
+test("长句识别，删除", async () => {
 	const py = "veuiyigehfijdejuzi".split("");
 	for (let i = 0; i < py.length; i++) {
 		console.log(py.slice(0, i + 1).join(""));
@@ -40,14 +40,14 @@ Deno.test("长句识别，删除", async () => {
 	console.log(getUserData());
 });
 
-Deno.test("长词优先和长句生成", async () => {
+test("长词优先和长句生成", async () => {
 	await commit("在田野上，");
 	// 不知道为什么，qwen有个“农副”的token，就以此作为例子
 	const c = await single_ci(keys_to_pinyin("nsfu", { shuangpin: "自然码" }));
 	console.log(c.candidates.slice(0, 5));
 });
 
-Deno.test("长句处理等价", async () => {
+test("长句处理等价", async () => {
 	commit("冰灯是");
 	const py = "lqxyyuvsgobzfh";
 	const a = (await single_ci(keys_to_pinyin(py, { shuangpin: "自然码" })))
@@ -61,5 +61,5 @@ Deno.test("长句处理等价", async () => {
 	const b = (await single_ci(keys_to_pinyin(py, { shuangpin: "自然码" })))
 		.candidates[0].word;
 	console.log(a, b);
-	assert(a === b);
+	expect(a).toBe(b);
 });

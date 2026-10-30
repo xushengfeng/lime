@@ -11,6 +11,11 @@ for (const x of readdirSync(__dirname)) {
 }
 
 export default defineConfig({
+	server: {
+		proxy: {
+			"/api": "http://127.0.0.1:5000",
+		},
+	},
 	build: {
 		rollupOptions: {
 			input: i,

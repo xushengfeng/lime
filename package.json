@@ -1,14 +1,33 @@
 {
-    "scripts": {
-        "install_interface": "cd interface && deno install",
-        "build_interface": "cd interface && deno run build"
-    },
-    "dependencies": {
-        "hono": "^4.11.1",
-        "node-llama-cpp": "^3.14.5",
-        "pinyin-pro": "^3.27.0"
-    },
-    "devDependencies": {
-        "@types/node": "^25.0.2"
-    }
+	"name": "lime",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "tsx watch src/server/start.ts",
+		"start": "tsx src/server/start.ts",
+		"dev:interface": "pnpm --filter interface dev",
+		"build": "pnpm build:hiae && pnpm build:interface",
+		"build:interface": "pnpm --filter interface build",
+		"build:hiae": "esbuild src/cli/hiae_payload.ts --bundle --platform=node --format=esm --outfile=dist/hiae_payload.mjs",
+		"key": "tsx src/server/key.ts",
+		"userword": "tsx src/cli/preload_word.ts",
+		"test": "vitest run tests/unit",
+		"test:watch": "vitest tests/unit",
+		"test:integration": "vitest run --config vitest.integration.config.ts",
+		"typecheck": "tsc --noEmit && pnpm --filter interface typecheck"
+	},
+	"dependencies": {
+		"@hono/node-server": "^2.1.5",
+		"hono": "^4.11.1",
+		"node-llama-cpp": "^3.14.5",
+		"pinyin-pro": "^3.27.0"
+	},
+	"devDependencies": {
+		"@types/node": "^25.0.2",
+		"esbuild": "^0.28.2",
+		"tsx": "^4.23.15",
+		"typescript": "~5.9.3",
+		"vitest": "^5.0.5"
+	}
 }

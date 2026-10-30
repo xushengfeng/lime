@@ -1,10 +1,11 @@
+import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseArgs } from "@std/cli/parse-args";
-import { encodeBase64Url } from "@std/encoding/base64url";
+import { parseArgs } from "node:util";
+import { isMain } from "../shared/is-main.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const KEY_FILE = path.join(__dirname, "key.txt");
+const KEY_FILE = path.join(__dirname, "../../key.txt");
 
 /**
  * 生成随机 key（URL-safe）并返回字符串。
@@ -12,20 +13,27 @@ const KEY_FILE = path.join(__dirname, "key.txt");
 function generateKey(nBytes: number = 32): string {
 	const randomBytes = new Uint8Array(nBytes);
 	crypto.getRandomValues(randomBytes);
-	return encodeBase64Url(randomBytes);
+	return Buffer.from(randomBytes).toString("base64url");
 }
 
 /**
  * 对 key 做 SHA-256 并返回 hex 哈希。
  */
 async function hashKey(key: string): Promise<string> {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(key);
+	const data = new TextEncoder().encode(key);
 	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
 
-	// 转换为十六进制字符串
-	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+	return Array.from(new Uint8Array(hashBuffer))
+		.map((b) => b.toString(16).padStart(2, "0"))
+		.join("");
+}
+
+function isNotFound(error: unknown): boolean {
+	return (
+		error instanceof Error &&
+		"code" in error &&
+		(error as NodeJS.ErrnoException).code === "ENOENT"
+	);
 }
 
 /**
@@ -33,38 +41,28 @@ async function hashKey(key: string): Promise<string> {
  */
 async function saveHash(
 	hashHex: string,
-	path: string = KEY_FILE,
+	keyPath: string = KEY_FILE,
 ): Promise<void> {
-	// 读取已有哈希以避免重复
 	const existing = new Set<string>();
 
 	try {
-		const content = await Deno.readTextFile(path);
+		const content = await readFile(keyPath, "utf8");
 		content.split("\n").forEach((line) => {
 			const trimmed = line.trim();
 			if (trimmed) existing.add(trimmed);
 		});
 	} catch (error) {
-		if (!(error instanceof Deno.errors.NotFound)) {
+		if (!isNotFound(error)) {
 			throw error;
 		}
-		// 文件不存在是正常情况，继续执行
 	}
 
 	if (existing.has(hashHex)) {
 		return;
 	}
 
-	// 确保目录存在
-	const dir = path.includes("/")
-		? path.substring(0, path.lastIndexOf("/"))
-		: ".";
-	if (dir !== ".") {
-		await Deno.mkdir(dir, { recursive: true });
-	}
-
-	// 追加哈希到文件
-	await Deno.writeTextFile(path, `${hashHex}\n`, { append: true });
+	await mkdir(path.dirname(keyPath), { recursive: true });
+	await appendFile(keyPath, `${hashHex}\n`);
 }
 
 /**
@@ -72,16 +70,16 @@ async function saveHash(
  */
 export async function verifyKey(
 	key: string,
-	path: string = KEY_FILE,
+	keyPath: string = KEY_FILE,
 ): Promise<boolean> {
 	try {
 		const hashHex = await hashKey(key);
 
 		try {
-			const content = await Deno.readTextFile(path);
+			const content = await readFile(keyPath, "utf8");
 			return content.split("\n").some((line) => line.trim() === hashHex);
 		} catch (error) {
-			if (error instanceof Deno.errors.NotFound) {
+			if (isNotFound(error)) {
 				return false;
 			}
 			throw error;
@@ -93,13 +91,15 @@ export async function verifyKey(
 }
 
 async function main(): Promise<void> {
-	const args = parseArgs(Deno.args, {
-		string: ["verify"],
-		alias: { verify: "v" },
+	const { values } = parseArgs({
+		args: process.argv.slice(2),
+		options: {
+			verify: { type: "string", short: "v" },
+		},
 	});
 
-	if (args.verify) {
-		const ok = await verifyKey(args.verify);
+	if (values.verify) {
+		const ok = await verifyKey(values.verify);
 		if (ok) {
 			console.log("Valid: key 的哈希存在于 key.txt。");
 		} else {
@@ -114,9 +114,9 @@ async function main(): Promise<void> {
 	}
 }
 
-if (import.meta.main) {
+if (isMain(import.meta.url)) {
 	main().catch((error) => {
 		console.error(error);
-		Deno.exit(1);
+		process.exit(1);
 	});
 }

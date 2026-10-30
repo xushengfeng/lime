@@ -1,28 +1,25 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono, type Context } from "hono";
 import { bearerAuth } from "hono/bearer-auth";
 import { cors } from "hono/cors";
-import { serveStatic } from "hono/deno";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
-import { verifyKey } from "./key.ts";
 import {
 	decryptJsonWithSavedKey,
 	encryptJson,
 	HIAE_ENCRYPTION_HEADER,
 	HIAE_ENCRYPTION_VERSION,
 	type SecurePayload,
-} from "./utils/secure_payload.ts";
-import type { Config } from "./utils/config.d.ts";
+} from "../crypto/secure_payload.ts";
+import type { InputLog } from "../shared/api.ts";
+import config from "./config.ts";
+import { verifyKey } from "./key.ts";
 
-let userConfig: Config | undefined;
-
-try {
-	userConfig = (await import("./user_config.ts")).default;
-} catch {
-	console.log("使用默认配置");
-}
-
-const config = userConfig || (await import("./config.ts")).default;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distDir = path.join(__dirname, "../../interface/dist");
 
 const { single_ci, commit, getUserData, addUserWord } = config.runner;
 
@@ -35,19 +32,7 @@ function arrayLimtPush<T>(arr: T[], item: T, maxLen: number) {
 }
 
 const inputLogMaxLen = 10 ** 5;
-export const inputLog: {
-	keyDeltaTimes: Array<number>;
-	lastKeyTime: number | null;
-	ziDeltaTimes: Array<number>;
-	lastZiTime: number | null;
-	ziCount: number;
-	lastCandidates: {
-		time: number;
-		candidates: string[];
-	};
-	offsetTimes: Record<number, Array<number>>;
-	history: string; // 与直接从模型获取记录不同，模型有上下文限制，这里记录所有输入的文本，供后续微调使用
-} = {
+export const inputLog: InputLog = {
 	keyDeltaTimes: [],
 	lastKeyTime: null,
 	ziDeltaTimes: [],
@@ -62,16 +47,13 @@ export const inputLog: {
 };
 
 try {
-	const words = Deno.readTextFileSync(config.userWordsPath)
+	const words = readFileSync(config.userWordsPath, "utf8")
 		.split("\n")
 		.filter((w) => w.trim());
-	const textEncoder = new TextEncoder();
 	for (const [i, w] of words.entries()) {
 		addUserWord(w);
-		Deno.stdout.writeSync(
-			textEncoder.encode(
-				`加载用户词 ${(((i + 1) / words.length) * 100).toFixed(2)}%\r`,
-			),
+		process.stdout.write(
+			`加载用户词 ${(((i + 1) / words.length) * 100).toFixed(2)}%\r`,
 		);
 	}
 	console.log(`\n加载用户词完成，数量 ${words.length}`);
@@ -82,10 +64,10 @@ try {
 const app = new Hono();
 const api = new Hono();
 api.use("/*", async (c, next) => {
-	const path = new URL(c.req.url).pathname;
+	const pathname = new URL(c.req.url).pathname;
 	const isEncryptedInputRequest = c.req.method === "POST" &&
 		c.req.header(HIAE_ENCRYPTION_HEADER) === HIAE_ENCRYPTION_VERSION &&
-		(path.endsWith("/candidates") || path.endsWith("/commit"));
+		(pathname.endsWith("/candidates") || pathname.endsWith("/commit"));
 	if (isEncryptedInputRequest) {
 		return next();
 	}
@@ -230,11 +212,9 @@ api.post("/learntext", async (c) => {
 	});
 });
 
-try {
-	Deno.statSync("./interface/dist");
-} catch {
+if (!existsSync(distDir)) {
 	console.log(
-		"没有构建前端，一些服务器页面可能不显示（不影响输入法），如果需要，运行：\ndeno run install_interface\ndeno run build_interface\n然后重启服务器",
+		"没有构建前端，一些服务器页面可能不显示（不影响输入法），如果需要，运行：\npnpm build:interface\n然后重启服务器",
 	);
 }
 
@@ -245,7 +225,7 @@ app.use(
 	}),
 );
 
-app.use("/*", serveStatic({ root: "./interface/dist" }));
+app.use("/*", serveStatic({ root: distDir }));
 
 app.route("/api", api);
 

@@ -16,7 +16,7 @@ python 版本的见[python 分支](https://github.com/xushengfeng/lime/tree/pyth
 
 ## 运行
 
-需要有 deno.js 运行时，见[官网](https://deno.com/)
+需要有 Node.js 运行时（建议 22 或更高版本）和 [pnpm](https://pnpm.io/)
 
 下载本项目，建议通过命令`git clone https://github.com/xushengfeng/lime`，后续可以获取更新，当然也可以下载压缩包
 
@@ -25,7 +25,7 @@ python 版本的见[python 分支](https://github.com/xushengfeng/lime/tree/pyth
 ### 安装依赖
 
 ```shell
-deno install
+pnpm install
 ```
 
 ### 下载模型
@@ -39,13 +39,15 @@ git clone https://www.modelscope.cn/unsloth/Qwen3-0.6B-GGUF.git
 ### 开启服务器
 
 ```shell
-deno serve -A --port 5000 server.ts
+pnpm start
 ```
+
+开发时可以使用 `pnpm dev`，修改服务端代码后会自动重启。
 
 创建密钥，一定程度上防止被滥用或隐私泄露
 
 ```shell
-deno run -A key.ts
+pnpm key
 ```
 
 如果只是先看看这个项目的效果，可以跳转到下面的[说明](#前端)
@@ -66,9 +68,9 @@ patch:
 
 确保系统安装了 [curl](https://curl.se/download.html)，大部分系统如Windows（win10 1803+）、Linux、macOS 都自带了。
 
-创建密钥`deno run -A key.ts`，只需要创建一次，把输出的密钥改写在`llm_pinyin.lua`的`key`变量里面。
+创建密钥`pnpm key`，只需要创建一次，把输出的密钥改写在`llm_pinyin.lua`的`key`变量里面。
 
-默认开启 HiAE 加密。还需要把`llm_pinyin.lua`中的`hiae_payload`改成 lime 项目里`hiae_payload.ts`的绝对路径，例如`/home/me/lime/hiae_payload.ts`。加密模式下 Lua 端不会发送明文 bearer key，服务端会用`key.txt`里保存的 key hash 验证并解密请求。
+默认开启 HiAE 加密。先运行`pnpm build:hiae`生成`dist/hiae_payload.mjs`，再把`llm_pinyin.lua`中的`hiae_payload`改成这个文件的绝对路径，例如`/home/me/lime/dist/hiae_payload.mjs`。加密模式下 Lua 端不会发送明文 bearer key，服务端会用`key.txt`里保存的 key hash 验证并解密请求。
 
 如果需要临时回退到旧的明文 bearer 请求，可以把`llm_pinyin.lua`里的`enable_hiae`改成`false`。
 
@@ -86,11 +88,25 @@ patch:
 
 ## 配置
 
-复制`config.ts`为`user_config.ts`，在`user_config.ts`里面修改配置。
+复制`user_config.example.ts`为`user_config.ts`，在`user_config.ts`里面修改配置。
 
 比如可以把`shuangpin`的值改成`false`或者改成其他双拼方案。
 
 建议使用现代的代码编辑器修改，比如 vscode、zed、neovim 等，它们提供代码检查，改配置时可以避免错误。
+
+## 项目结构
+
+- `src/engine`：输入法核心，拼音索引、候选生成、模型加载
+- `src/server`：Hono 服务、鉴权、启动入口
+- `src/crypto`：HiAE 加解密
+- `src/cli`：密钥生成、用户词预加载等命令行工具
+- `src/config`：配置类型和默认配置
+- `interface`：Vite 前端
+- `tests/unit`：不需要模型的单元测试
+- `tests/integration`：需要 Qwen 模型的集成测试
+- `tests/fixtures`：测试数据
+- `scripts`：评测脚本
+- `assets`、`rime`：词典、字频和 Rime 配置
 
 ## 现状
 
@@ -152,11 +168,17 @@ curl --request POST \
 
 ### 其他输入方案
 
-添加类似`key_to_pinyin`的函数，用于把输入按键转换为文字索引，放在`key_map`文件夹下。添加类似`load_pinyin`的函数，提供把文字转为索引的方法。
+添加类似`key_to_pinyin`的函数，用于把输入按键转换为文字索引，放在`src/engine/key_map`文件夹下。添加类似`load_pinyin`的函数，提供把文字转为索引的方法。
 
 ## 测试
 
-用deno运行`test/test_text.ts`，将会按照输入较长句子的拼音，然后去统计其索引、按键数、提交数量等记录下来，还提供了一个计算的交互方式，根据按键速度（kpm）等计算理论上的打字速度（cpm）等数据。
+```shell
+pnpm test               # 单元测试，不需要模型
+pnpm test:integration   # 需要 Qwen 模型的集成测试
+pnpm typecheck
+```
+
+用 `pnpm exec tsx scripts/benchmark_text.ts` 运行长句评测，将会按照输入较长句子的拼音，然后去统计其索引、按键数、提交数量等记录下来，还提供了一个计算的交互方式，根据按键速度（kpm）等计算理论上的打字速度（cpm）等数据。
 
 ## 统计
 
@@ -166,13 +188,13 @@ curl --request POST \
 
 ### 使用ollama的模型
 
-添加`import { getOllamaModel } from "./utils/load_from_ollama.ts";`
+添加`import { getOllamaModel } from "./src/engine/ollama.ts";`
 
 `initLIME`的参数中设置`modelPath`，添加`getOllamaModel('模型名称')`，名称为`ollama list`命令列出的模型名称。
 
 ## 前端
 
-执行`deno run install_interface`和`deno run build_interface`
+执行`pnpm build:interface`构建前端，开发时可以使用`pnpm dev:interface`（默认端口 5179，API 会代理到 5000）。
 
 重启服务器
 

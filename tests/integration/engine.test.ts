@@ -1,8 +1,8 @@
-import { assert } from "@std/assert";
 import { pinyin } from "pinyin-pro";
-import { load_pinyin } from "../key_map/pinyin/gen_zi_pinyin.ts";
-import { keys_to_pinyin } from "../key_map/pinyin/keys_to_pinyin.ts";
-import { initLIME } from "../main.ts";
+import { expect, test } from "vitest";
+import { load_pinyin } from "../../src/engine/key_map/pinyin/gen_zi_pinyin.ts";
+import { keys_to_pinyin } from "../../src/engine/key_map/pinyin/keys_to_pinyin.ts";
+import { initLIME } from "../../src/engine/main.ts";
 
 const { commit, single_ci, model } = await initLIME({ ziInd: load_pinyin() });
 
@@ -43,18 +43,18 @@ async function test_text_offset(test_text: string[]) {
 	console.log("偏移", offset, ttt, ttt / test_text.length);
 }
 
-Deno.test("test text offset", async () => {
+test("test text offset", async () => {
 	const seg = new Intl.Segmenter("zh-Hans", { granularity: "word" });
 
 	const l = Array.from(seg.segment("聪明的输入法")).map((v) => v.segment);
 	await test_text_offset(l);
 });
 
-Deno.test("test text unnormal", async () => {
+test("test text unnormal", async () => {
 	const c = await single_ci(keys_to_pinyin("ku"));
 	console.log(
 		model.tokenizer("堀"),
 		model.tokenizer("堀").map((v) => model.detokenize([v])),
 	);
-	assert(c.candidates.find((v) => v.word === "堀"));
+	expect(c.candidates.find((v) => v.word === "堀")).toBeDefined();
 });

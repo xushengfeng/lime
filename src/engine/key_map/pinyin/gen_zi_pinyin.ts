@@ -19,8 +19,8 @@ function get_dict_py(filepath: string) {
 }
 
 export function load_pinyin() {
-	const a = get_dict_py("../../assets/pinyin/8105.dict.yaml");
-	const b = get_dict_py("../../assets/pinyin/41448.dict.yaml");
+	const a = get_dict_py("../../../../assets/pinyin/8105.dict.yaml");
+	const b = get_dict_py("../../../../assets/pinyin/41448.dict.yaml");
 	const d: Record<string, Set<string>> = {};
 	for (const i in a) {
 		const l = d[i] ?? new Set();

@@ -1,4 +1,4 @@
-import type { ZiIndAndKey, ZiIndL } from "../key_map/zi_ind.ts";
+import type { ZiIndAndKey, ZiIndL } from "./key_map/zi_ind.ts";
 
 export function ziid_in_ziid(
 	pinyin_input: ZiIndL,

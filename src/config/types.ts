@@ -1,5 +1,5 @@
-import type { ZiIndL } from "../key_map/zi_ind.ts";
-import type { LIME } from "../main.ts";
+import type { ZiIndL } from "../engine/key_map/zi_ind.ts";
+import type { LIME } from "../engine/main.ts";
 
 export type Config = {
 	runner: LIME;

@@ -1,4 +1,4 @@
-import type { Candidate } from "../main.ts";
+import type { Candidate } from "./main.ts";
 
 /**
  * @param top 优先词表

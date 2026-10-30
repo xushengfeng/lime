@@ -1,24 +1,15 @@
 {
-    // 使用 IntelliSense 了解相关属性。
-    // 悬停以查看现有属性的描述。
-    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "request": "launch",
-            "name": "Launch This File",
-            "type": "node",
-            "program": "${file}",
-            "cwd": "${workspaceFolder}",
-            "env": {},
-            "runtimeExecutable": "/usr/bin/deno",
-            "runtimeArgs": [
-                "run",
-                "--unstable",
-                "--inspect-wait",
-                "--allow-all"
-            ],
-            "attachSimplePort": 9229
-        }
-    ]
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "启动服务器",
+			"type": "node",
+			"request": "launch",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["exec", "tsx", "src/server/start.ts"],
+			"cwd": "${workspaceFolder}",
+			"console": "integratedTerminal",
+			"skipFiles": ["<node_internals>/**"]
+		}
+	]
 }

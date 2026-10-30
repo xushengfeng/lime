@@ -1,7 +1,12 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { decodeBase64Url, encodeBase64Url } from "@std/encoding/base64url";
 import { decrypt, encrypt, NONCE_SIZE, TAG_SIZE } from "./hiae/index.ts";
+
+const encodeBase64Url = (bytes: Uint8Array): string =>
+	Buffer.from(bytes).toString("base64url");
+const decodeBase64Url = (value: string): Uint8Array =>
+	new Uint8Array(Buffer.from(value, "base64url"));
 
 export const HIAE_ENCRYPTION_HEADER = "X-Lime-Encryption";
 export const HIAE_ENCRYPTION_VERSION = "hiae-v1";
@@ -9,7 +14,7 @@ export const HIAE_ENCRYPTION_VERSION = "hiae-v1";
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const KEY_FILE = path.join(__dirname, "..", "key.txt");
+const KEY_FILE = path.join(__dirname, "../../key.txt");
 
 export interface SecurePayload {
   v: typeof HIAE_ENCRYPTION_VERSION;
@@ -46,9 +51,15 @@ export async function readSavedHiaeKeys(
 ): Promise<Uint8Array[]> {
   let content: string;
   try {
-    content = await Deno.readTextFile(keyPath);
+    content = await readFile(keyPath, "utf8");
   } catch (error) {
-    if (error instanceof Deno.errors.NotFound) return [];
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error as NodeJS.ErrnoException).code === "ENOENT"
+    ) {
+      return [];
+    }
     throw error;
   }
   return content

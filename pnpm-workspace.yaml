@@ -1,0 +1,6 @@
+packages:
+  - interface
+
+allowBuilds:
+  esbuild: true
+  node-llama-cpp: true
