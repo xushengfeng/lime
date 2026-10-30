@@ -15,6 +15,10 @@
 		"test": "vitest run tests/unit",
 		"test:watch": "vitest tests/unit",
 		"bench": "vitest run --config vitest.bench.config.ts",
+		"bench:compare": "tsx bench/compare.ts",
+		"bench:ablation": "tsx bench/compare.ts --ablation",
+		"bench:tokens": "tsx bench/export_tokens.ts",
+		"bench:words": "tsx bench/build_words.ts",
 		"bench:speed": "tsx bench/input_speed.ts",
 		"bench:word": "tsx bench/word_choice.ts",
 		"typecheck": "tsc --noEmit && pnpm --filter interface typecheck"

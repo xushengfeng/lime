@@ -3,3 +3,6 @@ node_modules
 user_config.ts
 userword/preload_word.txt
 dist/
+bench/results/
+assets/pinyin/words.dict.yaml
+bench/dicts/

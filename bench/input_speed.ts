@@ -51,7 +51,7 @@ function logOffset(offset: Record<number, number>) {
 async function run() {
 	const { commit, single_ci } = await initLIME({ ziInd: load_pinyin() });
 
-	const file = path.join(__dirname, "../tests/fixtures/冰灯.txt");
+	const file = path.join(__dirname, "articles/冰灯.txt");
 
 	const seg = new Intl.Segmenter("zh-Hans", { granularity: "word" });
 	const test_text_raw = readFileSync(file, "utf8");

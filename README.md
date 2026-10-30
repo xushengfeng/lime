@@ -103,9 +103,11 @@ patch:
 - `src/config`：配置类型和默认配置
 - `interface`：Vite 前端
 - `tests/unit`：不需要模型的单元测试
-- `bench`：需要 Qwen 模型的防退化评测和速度基准
+- `bench`：需要 Qwen 模型的防退化评测、对比/消融实验和速度基准
+- `bench/articles`：评测文章（冰灯、孔乙己、论语等），可自行添加
+- `bench/dicts`：从模型导出的 Qwen token 表
 - `tests/fixtures`：测试数据
-- `assets`、`rime`：词典、字频和 Rime 配置
+- `assets/pinyin`：rime-ice 字表和词表
 
 ## 现状
 
@@ -174,10 +176,36 @@ curl --request POST \
 ```shell
 pnpm test               # 单元测试，不需要模型
 pnpm bench              # 模型相关的防退化评测
+pnpm bench:compare      # LIME 与 baseline 对比
+pnpm bench:ablation     # LIME + 字频/调频/上下文/雾凇词库/Qwen token 一起跑
 pnpm bench:speed        # 长句输入速度评测
 pnpm bench:word         # 用字准确率评测
 pnpm typecheck
 ```
+
+`bench/compare.ts` 默认用 `bench/articles/冰灯.txt`，两边都输入自然码双拼，统计首选字符覆盖、Top5、缺失和平均排名。可以换文章或截断：
+
+```shell
+pnpm bench:compare --article bench/articles/孔乙己.txt
+pnpm bench:compare --limit 300 --json bench/results/冰灯-300.json
+pnpm bench:words        # 重新生成雾凇词表
+pnpm bench:tokens       # 重新导出 Qwen token 表
+```
+
+词表和 token 表都是本地生成的，不提交到仓库；首次跑词库/Token baseline 前需要先执行上面两条命令。没有 `words.dict.yaml` 时会退回只使用字表。
+
+四篇不同领域文章上的首选字符覆盖（“字典”使用 `assets/pinyin` 字表，“雾凇词库”和“Qwen token”使用词表 + 长词优先）：
+
+| 文章 | 汉字数 | LIME | 字典字频 | 字典+调频 | 字典+上下文 | 雾凇词库 | Qwen token |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 冰灯 | 936 | **69.66%** | 38.68% | 51.82% | 53.85% | 59.40% | 59.94% |
+| 孔乙己 | 2180 | **66.70%** | 51.42% | 58.90% | 63.58% | 66.38% | 63.07% |
+| 一件小事 | 865 | 61.97% | 59.54% | 62.20% | 63.58% | **67.28%** | 62.66% |
+| 论语 | 1410 | **73.33%** | 37.02% | 51.84% | 54.11% | 62.27% | 62.41% |
+
+**首选字符覆盖** = 正确候选排在**第 1 位**时覆盖的汉字数 / 全文汉字数，是首个候选的字符覆盖率，不是自由选择首个候选后最终文本的 CER；测试过程用正确文本作为 oracle 选择候选，只测排序。LIME 和词库 baseline 一次可能提交多个字，所以按候选覆盖的字数加权。
+
+LIME 在冰灯和论语上领先约 10 到 11 个百分点，孔乙己基本持平，一件小事落后雾凇词库 5.31 个百分点；Top5 覆盖 LIME 在所有文章上都最高。baseline 的消融和详细方法见 `bench/results.md` 与 `bench/README.md`。
 
 `bench/` 里的结果不是严格的单元测试，而是用来观察排序和输入体验是否退化的基准；失败时通常需要人工判断模型或排序策略是否真的变差。`bench:speed` 会按长句拼音模拟输入，统计索引、按键数、提交数，并可按 kpm 估算 cpm。
 
