@@ -195,7 +195,7 @@ const myAlgorithm: CandidateAlgorithm = {
 内置算法：
 
 - `lime-v1`：从模型下一步概率中按拼音筛选，并做长句补全。
-- `dict-llm-v1`：用词库生成单词和长句草稿，再由 LLM 逐个评估。支持单词前缀、多词长句切分、词库多音/模糊音、`*` 通配；词库唯一路径直接固定，候选 token 用前缀树共享评估，可以按 beam 剪枝。速度慢，优先准确率。它需要 `assets/pinyin/words.dict.yaml`，先运行 `pnpm words` 从 rime-ice 下载生成；没有词表会直接报错，不会静默退回只有字表。
+- `dict-llm-v1`：用词库生成单词和长句草稿，再由 LLM 逐个评估。支持单词前缀、多词长句切分、词库多音/模糊音、`*` 通配；词库唯一路径直接固定，候选 token 用前缀树共享评估，可以按 beam 剪枝，并额外保留一批单字/单词安全候选，避免长句候选把首音节短候选挤掉。速度慢，优先准确率。它需要 `assets/pinyin/words.dict.yaml`，先运行 `pnpm words` 从 rime-ice 下载生成；没有词表会直接报错，不会静默退回只有字表。
 
 ```ts
 await initLIME({ ziInd: load_pinyin(), algorithm: "dict-llm-v1" });

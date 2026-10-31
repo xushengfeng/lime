@@ -25,6 +25,8 @@ export type DictLlmOptions = {
 	maxSingleDrafts?: number;
 	/** 完整 LLM 评估的候选数。 */
 	maxEvaluate?: number;
+	/** 额外保留的单词/单字安全候选数，保证首选音节有短候选。 */
+	maxSafetyCandidates?: number;
 	/** 返回给前端的候选数。 */
 	maxCandidates?: number;
 	/** 每多消费一个音节的加分，0 到 1 的覆盖率按此权重计入。 */
@@ -72,6 +74,7 @@ const defaultOptions: Required<Omit<DictLlmOptions, "dictionary">> = {
 	maxSentenceDrafts: 300,
 	maxSingleDrafts: 200,
 	maxEvaluate: 24,
+	maxSafetyCandidates: 32,
 	maxCandidates: 100,
 	coverageBonus: 2,
 	dictWeight: 0.05,
@@ -93,6 +96,7 @@ const defaultOptions: Required<Omit<DictLlmOptions, "dictionary">> = {
  *
  * 词库只有一条完整路径时直接固定，不调用 LLM。
  * 其余候选按 token 建前缀树，共享前缀只评估一次，再用 beam 控制分叉。
+ * 另外保留一批单字/单词安全候选，避免长句候选把首音节短候选挤掉。
  * 评估分数是每音节 logprob 加覆盖率和高频词先验。速度不是首要目标。
  */
 export class DictLlm implements CandidateAlgorithm {
@@ -577,7 +581,19 @@ export class DictLlm implements CandidateAlgorithm {
 					prescore: this.prescore(draft, tokens, baseProbs, input),
 				};
 			});
-			const scored = this.selectForEvaluation(allScored);
+			const selected = this.selectForEvaluation(allScored);
+			// 安全候选：单词/单字单独保留一批，避免长句候选把首音节短候选挤掉。
+			const safety = allScored
+				.filter((item) => item.draft.words.length === 1)
+				.sort((a, b) => b.prescore - a.prescore)
+				.slice(0, this.options.maxSafetyCandidates);
+			const seen = new Set<ScoredDraft>();
+			const scored: ScoredDraft[] = [];
+			for (const item of [...selected, ...safety]) {
+				if (seen.has(item)) continue;
+				seen.add(item);
+				scored.push(item);
+			}
 			const scores = await this.scoreDrafts(scored, baseProbs, session);
 
 			const results: Candidate[] = [];
