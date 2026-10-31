@@ -14,7 +14,7 @@ pnpm bench
 - `user_word.test.ts`：用户词和智能组词
 - `ollama.test.ts`：检查本机 Ollama 模型
 
-`LIME_ALGORITHM=dict-llm-v1 pnpm bench` 可以让这些评测切换到其他算法。
+`LIME_ALGORITHM=dict-llm-v1 pnpm bench` 可以让这些评测切换到其他算法；`dict-llm-v1-quality` 是完整长句评估版本。
 
 `lime-v1` 的快照由 `pnpm bench:golden:gen` 生成。只有确认要更新参考行为时才运行它。
 
@@ -32,7 +32,7 @@ pnpm bench:compare --algorithms lime-v1,dict-llm-v1
 `compare.ts` 用 `input_speed` 的方式模拟长句输入，双方都使用自然码双拼：
 
 - `LIME（模型）`：Qwen 模型给出候选
-- `LIME（dict-llm-v1）`：词库生成单词/长句草稿，LLM 逐个评估；速度慢，优先准确率
+- `LIME（dict-llm-v1）`：词库生成单词/长句草稿，LLM 排序；默认快速模式使用固定音节窗口和评估预算，完整评估可传 `maxEvalTokens: Infinity`
 - `字典（基础字频）`：只按 `assets/pinyin` 的 8105 字频排序
 - `字典（+调频）`：加入在线字频
 - `字典（+调频+上下文）`：再加入在线二元上下文

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Config } from "./src/config/types.ts";
+import { createQualityDictLlm } from "./src/engine/algorithms/dict-llm.ts";
 import { resortFeq } from "./src/engine/resort_feq.ts";
 import { load_pinyin } from "./src/engine/key_map/pinyin/gen_zi_pinyin.ts";
 import { keys_to_pinyin } from "./src/engine/key_map/pinyin/keys_to_pinyin.ts";
@@ -12,8 +13,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const config: Config = {
 	runner: await initLIME({
 		ziInd: load_pinyin(),
-		// 也可以换成其他已注册算法 id，或直接传入 CandidateAlgorithm 实例/工厂
-		algorithm: "lime-v1",
+		// 质量模式：完整长句评估，速度慢；只是想快速打字可换回 "lime-v1" 或快速版 "dict-llm-v1"
+		algorithm: createQualityDictLlm(),
 		omitContext: true,
 		afterReSort: [
 			resortFeq(

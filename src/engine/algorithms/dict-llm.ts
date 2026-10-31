@@ -37,8 +37,16 @@ export type DictLlmOptions = {
 	topK?: number;
 	/** token trie 每个节点最多向下展开几个分支，0 表示不限制。 */
 	beamWidth?: number;
+	/** 每次 candidates 最多做多少次 token 评估，0 表示不做深度评估。 */
+	maxEvalTokens?: number;
+	/** 单次最多处理多少个拼音音节，超过部分作为 remainkeys 留给下一轮。 */
+	maxInputSyllables?: number;
+	/** 直接复用 commit 留下的 next 分布，避免首键再额外评估一次。 */
+	useCommitDistribution?: boolean;
 	/** 词库只有一条完整路径时直接固定，不调用 LLM。 */
 	useDeterministicPath?: boolean;
+	/** 超过这么多音节就不再检查唯一路径，避免长句每键都做完整 DP。 */
+	deterministicMaxSyllables?: number;
 	allowWildcard?: boolean;
 	useSentence?: boolean;
 	useSingleWords?: boolean;
@@ -65,6 +73,7 @@ type ScoredDraft = {
 type TokenTrieNode = {
 	children: Map<Token, TokenTrieNode>;
 	items: ScoredDraft[];
+	maxPrescore: number;
 };
 
 const defaultOptions: Required<Omit<DictLlmOptions, "dictionary">> = {
@@ -78,9 +87,13 @@ const defaultOptions: Required<Omit<DictLlmOptions, "dictionary">> = {
 	maxCandidates: 100,
 	coverageBonus: 2,
 	dictWeight: 0.05,
-	topK: 200,
+	topK: 50,
 	beamWidth: 8,
+	maxEvalTokens: 0,
+	maxInputSyllables: 7,
+	useCommitDistribution: true,
 	useDeterministicPath: true,
+	deterministicMaxSyllables: 8,
 	allowWildcard: true,
 	useSentence: true,
 	useSingleWords: true,
@@ -97,7 +110,8 @@ const defaultOptions: Required<Omit<DictLlmOptions, "dictionary">> = {
  * 词库只有一条完整路径时直接固定，不调用 LLM。
  * 其余候选按 token 建前缀树，共享前缀只评估一次，再用 beam 控制分叉。
  * 另外保留一批单字/单词安全候选，避免长句候选把首音节短候选挤掉。
- * 评估分数是每音节 logprob 加覆盖率和高频词先验。速度不是首要目标。
+ * 默认快速模式限制音节窗口和每键评估预算；把 maxEvalTokens 设为 Infinity 可切回完整评估。
+ * 评估分数是每音节 logprob 加覆盖率和高频词先验。
  */
 export class DictLlm implements CandidateAlgorithm {
 	readonly id = "dict-llm-v1";
@@ -143,33 +157,60 @@ export class DictLlm implements CandidateAlgorithm {
 			return { candidates: [] };
 		}
 
-		if (this.options.useDeterministicPath) {
-			const fixed = this.findDeterministicPath(input);
+		const workInput =
+			input.length > this.options.maxInputSyllables
+				? input.slice(0, this.options.maxInputSyllables)
+				: input;
+		const extraInput = input.slice(workInput.length);
+
+		if (
+			this.options.useDeterministicPath &&
+			workInput.length <= this.options.deterministicMaxSyllables
+		) {
+			const fixed = this.findDeterministicPath(workInput);
 			if (fixed) {
 				return {
-					candidates: [
-						{
-							word: fixed.word,
-							pinyin: fixed.pinyin,
-							remainkeys: fixed.remainkeys,
-							preedit: fixed.preedit,
-							consumedkeys: fixed.consumedkeys,
-							score: 0,
-						},
-					],
+					candidates: this.extendRemain(
+						[
+							{
+								word: fixed.word,
+								pinyin: fixed.pinyin,
+								remainkeys: fixed.remainkeys,
+								preedit: fixed.preedit,
+								consumedkeys: fixed.consumedkeys,
+								score: 0,
+							},
+						],
+						extraInput,
+					),
 				};
 			}
 		}
 
-		const drafts = this.buildDrafts(input);
+		const drafts = this.buildDrafts(workInput);
 		if (drafts.length === 0) {
 			return { candidates: [] };
 		}
 
-		const candidates = await this.evaluate(drafts, input, session);
+		const candidates = await this.evaluate(drafts, workInput, session);
 		return {
-			candidates: candidates.slice(0, this.options.maxCandidates),
+			candidates: this.extendRemain(candidates, extraInput).slice(
+				0,
+				this.options.maxCandidates,
+			),
 		};
+	}
+
+	private extendRemain(candidates: Candidate[], extra: ZiIndL) {
+		if (extra.length === 0) return candidates;
+		const extraPinyin = extra.map((item) => item[0].ind);
+		return candidates.map((candidate) => ({
+			...candidate,
+			remainkeys: [...candidate.remainkeys, ...extraPinyin],
+			preedit: candidate.preedit.endsWith(" ")
+				? candidate.preedit
+				: `${candidate.preedit} `,
+		}));
 	}
 
 	private buildDrafts(input: ZiIndL): Draft[] {
@@ -459,22 +500,35 @@ export class DictLlm implements CandidateAlgorithm {
 		baseProbs: Map<ExToken, number>,
 		session: LlmSession,
 	) {
-		const root: TokenTrieNode = { children: new Map(), items: [] };
+		const root: TokenTrieNode = {
+			children: new Map(),
+			items: [],
+			maxPrescore: -Infinity,
+		};
 		for (const item of scored) {
 			let node = root;
+			node.maxPrescore = Math.max(node.maxPrescore, item.prescore);
 			for (const token of item.tokens) {
 				let child = node.children.get(token);
 				if (!child) {
-					child = { children: new Map(), items: [] };
+					child = {
+						children: new Map(),
+						items: [],
+						maxPrescore: -Infinity,
+					};
 					node.children.set(token, child);
 				}
 				node = child;
+				node.maxPrescore = Math.max(node.maxPrescore, item.prescore);
 			}
 			node.items.push(item);
 		}
 
 		const scores = new Map<ScoredDraft, number>();
 		const base = session.committedLength;
+		let evalTokens = 0;
+		const limited =
+			this.options.maxEvalTokens !== Infinity && this.options.maxEvalTokens >= 0;
 
 		const visit = async (
 			node: TokenTrieNode,
@@ -486,7 +540,11 @@ export class DictLlm implements CandidateAlgorithm {
 				token,
 				child,
 				probability: probabilities.get(token) ?? 0,
-			})).sort((a, b) => b.probability - a.probability);
+			})).sort((a, b) =>
+				limited && this.options.maxEvalTokens !== 0
+					? b.child.maxPrescore - a.child.maxPrescore
+					: b.probability - a.probability,
+			);
 
 			const expandCount =
 				this.options.beamWidth > 0
@@ -502,6 +560,7 @@ export class DictLlm implements CandidateAlgorithm {
 
 				if (index >= expandCount) continue;
 				if (entry.child.children.size === 0) continue;
+				if (limited && evalTokens >= this.options.maxEvalTokens) continue;
 
 				const restoreLength = base + depth;
 				if (session.contextTokens.length > restoreLength) {
@@ -512,6 +571,7 @@ export class DictLlm implements CandidateAlgorithm {
 						},
 					]);
 				}
+				evalTokens++;
 				const childProbabilities = await session.evaluateNext(
 					[entry.token],
 					{ topK: this.options.topK },
@@ -571,7 +631,9 @@ export class DictLlm implements CandidateAlgorithm {
 			this.ensureCache(session);
 			const baseProbs =
 				this.baseProbsCache ??
-				(await session.recomputeNextProbabilities(this.options.topK));
+				(this.options.useCommitDistribution && session.lastResult
+					? session.lastResult
+					: await session.recomputeNextProbabilities(this.options.topK));
 			this.baseProbsCache = baseProbs;
 			const allScored: ScoredDraft[] = drafts.map((draft) => {
 				const tokens = this.tokensOf(draft.word, session);
@@ -584,7 +646,7 @@ export class DictLlm implements CandidateAlgorithm {
 			const selected = this.selectForEvaluation(allScored);
 			// 安全候选：单词/单字单独保留一批，避免长句候选把首音节短候选挤掉。
 			const safety = allScored
-				.filter((item) => item.draft.words.length === 1)
+				.filter((item) => item.draft.end === 1)
 				.sort((a, b) => b.prescore - a.prescore)
 				.slice(0, this.options.maxSafetyCandidates);
 			const seen = new Set<ScoredDraft>();
@@ -660,4 +722,16 @@ export class DictLlm implements CandidateAlgorithm {
 			0.05 * Math.log(firstProbability + 1e-12)
 		);
 	}
+}
+
+/** 完整长句评估预设：慢，但保留整句后缀信息。 */
+export function createQualityDictLlm(options: DictLlmOptions = {}) {
+	return new DictLlm({
+		maxEvalTokens: Infinity,
+		maxInputSyllables: Infinity,
+		useCommitDistribution: false,
+		topK: 200,
+		maxSafetyCandidates: 32,
+		...options,
+	});
 }

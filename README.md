@@ -195,7 +195,7 @@ const myAlgorithm: CandidateAlgorithm = {
 内置算法：
 
 - `lime-v1`：从模型下一步概率中按拼音筛选，并做长句补全。
-- `dict-llm-v1`：用词库生成单词和长句草稿，再由 LLM 逐个评估。支持单词前缀、多词长句切分、词库多音/模糊音、`*` 通配；词库唯一路径直接固定，候选 token 用前缀树共享评估，可以按 beam 剪枝，并额外保留一批单字/单词安全候选，避免长句候选把首音节短候选挤掉。速度慢，优先准确率。它需要 `assets/pinyin/words.dict.yaml`，先运行 `pnpm words` 从 rime-ice 下载生成；没有词表会直接报错，不会静默退回只有字表。
+- `dict-llm-v1`：用词库生成单词和长句草稿，再由 LLM 排序。支持单词前缀、多词长句切分、词库多音/模糊音、`*` 通配；词库唯一路径直接固定，候选 token 用前缀树共享评估，可以按 beam 剪枝，并额外保留一批单字/单词安全候选。默认是快速模式：单次最多处理 7 个音节、每键固定评估预算，长句按键不会越来越慢；需要完整长句评估时可以用 `createQualityDictLlm()`，或选择已注册的 `dict-llm-v1-quality`。它需要 `assets/pinyin/words.dict.yaml`，先运行 `pnpm words` 从 rime-ice 下载生成；没有词表会直接报错，不会静默退回只有字表。
 
 ```ts
 await initLIME({ ziInd: load_pinyin(), algorithm: "dict-llm-v1" });
@@ -263,5 +263,13 @@ LIME 在冰灯和论语上领先约 10 到 11 个百分点，孔乙己基本持�
 重启服务器
 
 访问 http://127.0.0.1:5000/demo.html?passwd=你的密码 将有个模拟平时输入法界面的页面
+
+需要连接其他服务器时，加 `server` 参数：
+
+```text
+http://127.0.0.1:5000/demo.html?server=http://127.0.0.1:5001&passwd=目标服务器的密码
+```
+
+页面会直接请求该服务器，不影响当前 5000 服务器。
 
 其他界面在 http://127.0.0.1:5000 可以导航，如上下文获取、输入统计计算等

@@ -1,11 +1,13 @@
 import { expect, test } from "vitest";
+import { createQualityDictLlm } from "../src/engine/algorithms/dict-llm.ts";
 import { load_pinyin } from "../src/engine/key_map/pinyin/gen_zi_pinyin.ts";
 import { keys_to_pinyin } from "../src/engine/key_map/pinyin/keys_to_pinyin.ts";
 import { initLIME } from "../src/engine/main.ts";
 
+// 这里测质量模式；默认的 dict-llm-v1 是每键固定评估预算的快速模式。
 const runner = await initLIME({
 	ziInd: load_pinyin(),
-	algorithm: "dict-llm-v1",
+	algorithm: createQualityDictLlm(),
 });
 
 test("词库 + LLM 评估：长句", async () => {
