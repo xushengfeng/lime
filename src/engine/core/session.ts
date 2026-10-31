@@ -1,4 +1,5 @@
 import type {
+	ControlledEvaluateInputItem,
 	LlamaContext,
 	LlamaContextSequence,
 	LlamaModel,
@@ -29,6 +30,7 @@ export class LlmSession {
 	last_context_data = { context: "" };
 	private last_result: Map<ExToken, number> | undefined;
 	private lastCommitOffset = 0;
+	private contextVersion = 0;
 
 	private readonly pre_context: string;
 	private readonly modelEvalLock = new Lock();
@@ -77,6 +79,11 @@ export class LlmSession {
 
 	get committedLength(): number {
 		return this.lastCommitOffset;
+	}
+
+	/** 上下文变化计数，供算法缓存失效使用。 */
+	get version(): number {
+		return this.contextVersion;
 	}
 
 	get contextTokens(): Token[] {
@@ -132,6 +139,7 @@ export class LlmSession {
 			],
 		]);
 		this.lastCommitOffset = this.sequence.contextTokens.length;
+		this.contextVersion++;
 		console.log(
 			`已优化上下文 ${oldTokenLen}->${this.sequence.contextTokens.length}`,
 		);
@@ -151,6 +159,7 @@ export class LlmSession {
 			},
 		]);
 		this.lastCommitOffset = this.sequence.contextTokens.length;
+		this.contextVersion++;
 	}
 
 	commit = async (text: string, update = false, newT = true) => {
@@ -209,6 +218,7 @@ export class LlmSession {
 				this.last_result?.set(i, 0);
 			}
 			this.lastCommitOffset = this.sequence.contextTokens.length;
+			this.contextVersion++;
 			release();
 		})();
 
@@ -239,6 +249,86 @@ export class LlmSession {
 	detoken = (tokens: ExToken[]) => {
 		return this.model.detokenize(this.exTokens(tokens));
 	};
+
+	/**
+	 * 重新计算“已提交上下文之后”的下一步概率。
+	 * 通过临时移除最后一个 token 再带着 generateNext 评估它，拿到不带 topK 截断的分布。
+	 * 调用前应先把上下文裁剪到 committedLength。
+	 */
+	async recomputeNextProbabilities(
+		topK = Infinity,
+	): Promise<Map<ExToken, number>> {
+		const tokens = this.sequence.contextTokens;
+		const last = tokens.at(-1);
+		if (last === undefined) return new Map();
+
+		await this.sequence.eraseContextTokenRanges([
+			{
+				start: tokens.length - 1,
+				end: tokens.length,
+			},
+		]);
+		const res = await this.sequence.controlledEvaluate([
+			[
+				last,
+				{
+					generateNext: {
+						probabilities: true,
+						options: {
+							topK,
+						},
+					},
+				},
+			],
+		]);
+		const r = res[0]?.next.probabilities || new Map<ExToken, number>();
+		for (const i of this.tokenIndex.userTokenIds) {
+			r.set(i, 0);
+		}
+		return r;
+	}
+
+	/**
+	 * 计算一段 token 在已提交上下文下的总 logprob。
+	 * 只需要评估前 n-1 个 token，最后一个 token 的概率从前一项的 next 分布里取。
+	 * 调用后上下文会停在该序列的倒数第二个 token，调用方需要自行裁剪回 committedLength。
+	 */
+	async scoreTokenSequence(
+		tokens: Token[],
+		op?: {
+			topK?: number;
+			baseProbs?: Map<ExToken, number>;
+		},
+	): Promise<number> {
+		if (tokens.length === 0) return -Infinity;
+		const topK = op?.topK ?? Infinity;
+		const baseProbs =
+			op?.baseProbs ?? (await this.recomputeNextProbabilities(topK));
+
+		let logprob = Math.log((baseProbs.get(tokens[0]) ?? 0) + 1e-12);
+		if (tokens.length === 1) return logprob;
+
+		const input: ControlledEvaluateInputItem[] = tokens
+			.slice(0, -1)
+			.map((token) => [
+				token,
+				{
+					generateNext: {
+						probabilities: true,
+						options: {
+							topK,
+						},
+					},
+				},
+			]);
+		const outputs = await this.sequence.controlledEvaluate(input);
+		for (const [i, output] of outputs.entries()) {
+			const nextToken = tokens[i + 1];
+			const probability = output?.next.probabilities?.get(nextToken) ?? 0;
+			logprob += Math.log(probability + 1e-12);
+		}
+		return logprob;
+	}
 
 	/**
 	 * 评估给定 token，并返回下一步的概率分布。
@@ -303,6 +393,7 @@ export class LlmSession {
 		]);
 		this.last_result = x.at(-1)?.next.probabilities;
 		this.lastCommitOffset = this.sequence.contextTokens.length;
+		this.contextVersion++;
 	};
 
 	resetIdleOmit() {

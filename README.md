@@ -97,7 +97,7 @@ patch:
 ## 项目结构
 
 - `src/engine/core`：共享引擎，模型会话、上下文、token 索引、用户词
-- `src/engine/algorithms`：候选算法，`lime-v1` 是当前版本
+- `src/engine/algorithms`：候选算法，内置 `lime-v1` 和 `dict-llm-v1`
 - `src/engine/key_map`：按键到拼音/双拼索引
 - `src/server`：Hono 服务、鉴权、启动入口
 - `src/crypto`：HiAE 加解密
@@ -190,7 +190,16 @@ const myAlgorithm: CandidateAlgorithm = {
 };
 ```
 
-在 `src/engine/algorithms/index.ts` 注册，或者在 `initLIME` 的 `algorithm` 参数里直接传实例/工厂。`lime-v1` 保留为当前算法的参考实现。
+在 `src/engine/algorithms/index.ts` 注册，或者在 `initLIME` 的 `algorithm` 参数里直接传实例/工厂。
+
+内置算法：
+
+- `lime-v1`：从模型下一步概率中按拼音筛选，并做长句补全。
+- `dict-llm-v1`：用词库生成单词和长句草稿，再由 LLM 逐个评估。支持单词前缀、多词长句切分、词库多音/模糊音、`*` 通配；词库唯一路径直接固定，候选 token 用前缀树共享评估，可以按 beam 剪枝。速度慢，优先准确率。它需要 `assets/pinyin/words.dict.yaml`，先运行 `pnpm words` 从 rime-ice 下载生成；没有词表会直接报错，不会静默退回只有字表。
+
+```ts
+await initLIME({ ziInd: load_pinyin(), algorithm: "dict-llm-v1" });
+```
 
 ## 测试
 
@@ -203,6 +212,7 @@ pnpm bench:ablation     # LIME + 字频/调频/上下文/雾凇词库/Qwen token
 pnpm bench:speed        # 长句输入速度评测
 pnpm bench:latency      # 按键延迟，标记超过 109ms 的场景
 pnpm bench:word         # 用字准确率评测
+pnpm words              # 下载生成 dict-llm-v1 需要的词表
 pnpm typecheck
 ```
 
@@ -211,8 +221,8 @@ pnpm typecheck
 ```shell
 pnpm bench:compare --article bench/articles/孔乙己.txt
 pnpm bench:compare --limit 300 --json bench/results/冰灯-300.json
-pnpm bench:compare --algorithms lime-v1,lime-v2
-LIME_ALGORITHM=lime-v2 pnpm bench:speed
+pnpm bench:compare --algorithms lime-v1,dict-llm-v1
+LIME_ALGORITHM=dict-llm-v1 pnpm bench:speed
 pnpm bench:words        # 重新生成雾凇词表
 pnpm bench:tokens       # 重新导出 Qwen token 表
 ```

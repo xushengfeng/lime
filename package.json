@@ -11,6 +11,7 @@
 		"build:interface": "pnpm --filter interface build",
 		"build:hiae": "esbuild src/cli/hiae_payload.ts --bundle --platform=node --format=esm --outfile=dist/hiae_payload.mjs",
 		"key": "tsx src/server/key.ts",
+		"words": "tsx bench/build_words.ts",
 		"userword": "tsx src/cli/preload_word.ts",
 		"test": "vitest run tests/unit",
 		"test:watch": "vitest tests/unit",

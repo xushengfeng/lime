@@ -9,4 +9,4 @@
 pnpm bench:words
 ```
 
-脚本会从 jsDelivr 拉取 rime-ice 原始词库，生成 `assets/pinyin/words.dict.yaml`。`bench/compare.ts` 的词库 baseline 会把拼音转换成自然码双拼后建前缀树，并按权重和长词偏置排序。没有生成该文件时，会退回只使用两张字表。
+脚本会从 jsDelivr 拉取 rime-ice 原始词库，生成 `assets/pinyin/words.dict.yaml`。`bench/compare.ts` 的词库 baseline 会把拼音转换成自然码双拼后建前缀树，并按权重和长词偏置排序。`dict-llm-v1` 使用该词表生成单词和长句草稿；缺少词表时会报错，避免只靠字表生成长句。也可以运行更短的 `pnpm words`。

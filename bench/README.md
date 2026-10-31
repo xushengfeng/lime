@@ -14,7 +14,7 @@ pnpm bench
 - `user_word.test.ts`：用户词和智能组词
 - `ollama.test.ts`：检查本机 Ollama 模型
 
-`LIME_ALGORITHM=lime-v2 pnpm bench` 可以让这些评测切换到其他算法。
+`LIME_ALGORITHM=dict-llm-v1 pnpm bench` 可以让这些评测切换到其他算法。
 
 `lime-v1` 的快照由 `pnpm bench:golden:gen` 生成。只有确认要更新参考行为时才运行它。
 
@@ -26,12 +26,13 @@ pnpm bench:compare --article bench/articles/孔乙己.txt
 pnpm bench:compare --engine baseline --baseline-mode rime
 pnpm bench:ablation
 pnpm bench:compare --limit 300 --json bench/results/冰灯-300.json
-pnpm bench:compare --algorithms lime-v1,lime-v2
+pnpm bench:compare --algorithms lime-v1,dict-llm-v1
 ```
 
 `compare.ts` 用 `input_speed` 的方式模拟长句输入，双方都使用自然码双拼：
 
 - `LIME（模型）`：Qwen 模型给出候选
+- `LIME（dict-llm-v1）`：词库生成单词/长句草稿，LLM 逐个评估；速度慢，优先准确率
 - `字典（基础字频）`：只按 `assets/pinyin` 的 8105 字频排序
 - `字典（+调频）`：加入在线字频
 - `字典（+调频+上下文）`：再加入在线二元上下文
@@ -59,7 +60,7 @@ pnpm bench:words    # 从 rime-ice 生成 assets/pinyin/words.dict.yaml（前 15
 pnpm bench:tokens   # 从 Qwen GGUF 导出 bench/dicts/qwen_tokens.tsv
 ```
 
-这两个文件都是本地生成的，**不提交到仓库**，避免把几十 MB 的原始词库和模型派生数据放进 git。换模型后需要重新生成 token 表；没有 `words.dict.yaml` 时词库 baseline 会退回字表。
+这两个文件都是本地生成的，**不提交到仓库**，避免把几十 MB 的原始词库和模型派生数据放进 git。换模型后需要重新生成 token 表；没有 `words.dict.yaml` 时词库 baseline 会退回字表，但 `dict-llm-v1` 会报错，要求先运行 `pnpm words`。
 
 ## 脚本运行
 

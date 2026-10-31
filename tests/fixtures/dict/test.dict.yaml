@@ -1,0 +1,14 @@
+# 词典匹配单元测试用的小词库
+---
+name: test
+version: "1"
+sort: by_weight
+...
+你好	ni hao	100
+地域	di yu	80
+优势	you shi	70
+流行于	liu xing yu	60
+中国	zhong guo	50
+北方	bei fang	40
+的	de	1000
+地	di	900
