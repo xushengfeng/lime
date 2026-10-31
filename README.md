@@ -42,6 +42,22 @@ git clone https://www.modelscope.cn/unsloth/Qwen3-0.6B-GGUF.git
 pnpm start
 ```
 
+默认端口是 5000，可以显式指定：
+
+```shell
+pnpm start --port 5001
+# 或
+PORT=5001 pnpm start
+```
+
+默认读取项目根目录的 `user_config.ts`。需要同时跑多个配置时，可以用 `LIME_CONFIG` 指定另一个配置文件：
+
+```shell
+LIME_CONFIG=user_config.quality.ts PORT=5001 pnpm start
+```
+
+`LIME_CONFIG` 相对于当前工作目录解析；配置文件里相对 `./src` 的 import 需要按它所在的位置调整。
+
 开发时可以使用 `pnpm dev`，修改服务端代码后会自动重启。
 
 创建密钥，一定程度上防止被滥用或隐私泄露
@@ -195,7 +211,7 @@ const myAlgorithm: CandidateAlgorithm = {
 内置算法：
 
 - `lime-v1`：从模型下一步概率中按拼音筛选，并做长句补全。
-- `dict-llm-v1`：用词库生成单词和长句草稿，再由 LLM 排序。支持单词前缀、多词长句切分、词库多音/模糊音、`*` 通配；词库唯一路径直接固定，候选 token 用前缀树共享评估，可以按 beam 剪枝，并额外保留一批单字/单词安全候选。默认是快速模式：单次最多处理 7 个音节、每键固定评估预算，长句按键不会越来越慢；需要完整长句评估时可以用 `createQualityDictLlm()`，或选择已注册的 `dict-llm-v1-quality`。它需要 `assets/pinyin/words.dict.yaml`，先运行 `pnpm words` 从 rime-ice 下载生成；没有词表会直接报错，不会静默退回只有字表。
+- `dict-llm-v1`：用词库生成单词和长句草稿，再由 LLM 排序。支持单词前缀、多词长句切分、词库多音/模糊音、`*` 通配；词库唯一路径直接固定，候选 token 用前缀树共享评估，可以按 beam 剪枝，并额外保留一批单字/单词安全候选。默认是快速模式：单次最多处理 7 个音节、每键固定评估预算，并降低词格搜索宽度，长句按键不会越来越慢；每个剩余音节默认扣 `selectionPenalty`（0.8），偏向一次提交更多内容。质量模式默认最多保留 1 个多词长句候选，其余长句移到词语候选之后，避免错误长句占满 Top5；完整覆盖候选与第一名差距在 `coverageFirstWithin`（默认 0.5）内时会优先排第一；完整长句评估可以用 `createQualityDictLlm()`，或选择已注册的 `dict-llm-v1-quality`。它需要 `assets/pinyin/words.dict.yaml`，先运行 `pnpm words` 从 rime-ice 下载生成；没有词表会直接报错，不会静默退回只有字表。
 
 ```ts
 await initLIME({ ziInd: load_pinyin(), algorithm: "dict-llm-v1" });

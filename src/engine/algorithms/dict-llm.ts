@@ -13,6 +13,9 @@ import type { AlgorithmDeps, CandidateAlgorithm } from "./types.ts";
 export type DictLlmOptions = {
 	/** 词库实例；默认加载 assets/pinyin 下的字表和词表。 */
 	dictionary?: WordDictionary;
+	/** 算法 id，快速/质量预设可以用不同值。 */
+	id?: string;
+	label?: string;
 	/** 最多用几个词拼成一句话。 */
 	maxWords?: number;
 	/** 每个输入位置最多尝试多少个词。 */
@@ -27,6 +30,12 @@ export type DictLlmOptions = {
 	maxEvaluate?: number;
 	/** 额外保留的单词/单字安全候选数，保证首选音节有短候选。 */
 	maxSafetyCandidates?: number;
+	/** 最终结果里最多保留几个多词长句候选，其余长句移到后面。 */
+	maxLongCandidates?: number;
+	/** 完整覆盖输入的候选与第一名分数差在此范围内时，提到第一。 */
+	coverageFirstWithin?: number;
+	/** 每个剩余音节扣多少分；越大越偏向一次提交更多内容。 */
+	selectionPenalty?: number;
 	/** 返回给前端的候选数。 */
 	maxCandidates?: number;
 	/** 每多消费一个音节的加分，0 到 1 的覆盖率按此权重计入。 */
@@ -76,14 +85,25 @@ type TokenTrieNode = {
 	maxPrescore: number;
 };
 
-const defaultOptions: Required<Omit<DictLlmOptions, "dictionary">> = {
-	maxWords: 5,
-	maxMatchesPerPosition: 30,
-	maxPathsPerPosition: 4096,
-	maxSentenceDrafts: 300,
-	maxSingleDrafts: 200,
-	maxEvaluate: 24,
+type EvaluatedCandidate = {
+	candidate: Candidate;
+	long: boolean;
+	full: boolean;
+};
+
+const defaultOptions: Required<
+	Omit<DictLlmOptions, "dictionary" | "id" | "label">
+> = {
+	maxWords: 4,
+	maxMatchesPerPosition: 20,
+	maxPathsPerPosition: 1024,
+	maxSentenceDrafts: 128,
+	maxSingleDrafts: 100,
+	maxEvaluate: 16,
 	maxSafetyCandidates: 32,
+	maxLongCandidates: 1,
+	coverageFirstWithin: 0.5,
+	selectionPenalty: 0.8,
 	maxCandidates: 100,
 	coverageBonus: 2,
 	dictWeight: 0.05,
@@ -93,7 +113,7 @@ const defaultOptions: Required<Omit<DictLlmOptions, "dictionary">> = {
 	maxInputSyllables: 7,
 	useCommitDistribution: true,
 	useDeterministicPath: true,
-	deterministicMaxSyllables: 8,
+	deterministicMaxSyllables: 5,
 	allowWildcard: true,
 	useSentence: true,
 	useSingleWords: true,
@@ -114,17 +134,24 @@ const defaultOptions: Required<Omit<DictLlmOptions, "dictionary">> = {
  * 评估分数是每音节 logprob 加覆盖率和高频词先验。
  */
 export class DictLlm implements CandidateAlgorithm {
-	readonly id = "dict-llm-v1";
-	readonly label = "词库 + LLM 评估";
+	readonly id: string;
+	readonly label: string;
 
 	private readonly dictionary: WordDictionary;
-	private readonly options: Required<Omit<DictLlmOptions, "dictionary">>;
+	private readonly options: Required<
+		Omit<DictLlmOptions, "dictionary" | "id" | "label">
+	>;
 	private readonly tokenCache = new Map<string, Token[]>();
+	private readonly scoreCache = new Map<string, number>();
 	private baseProbsCache: Map<ExToken, number> | undefined;
 	private cacheVersion = -1;
 
+	private static readonly MAX_SCORE_CACHE = 4096;
+
 	constructor(options: DictLlmOptions = {}) {
-		const { dictionary, ...rest } = options;
+		const { dictionary, id, label, ...rest } = options;
+		this.id = id ?? "dict-llm-v1";
+		this.label = label ?? "词库 + LLM 评估";
 		this.dictionary = dictionary ?? getDefaultDictionary();
 		this.options = { ...defaultOptions, ...rest };
 	}
@@ -139,6 +166,7 @@ export class DictLlm implements CandidateAlgorithm {
 
 	private clearCache() {
 		this.baseProbsCache = undefined;
+		this.scoreCache.clear();
 		this.cacheVersion = -1;
 	}
 
@@ -500,12 +528,25 @@ export class DictLlm implements CandidateAlgorithm {
 		baseProbs: Map<ExToken, number>,
 		session: LlmSession,
 	) {
+		const scores = new Map<ScoredDraft, number>();
+		const uncached: ScoredDraft[] = [];
+		for (const item of scored) {
+			const key = item.tokens.join(",");
+			const cached = this.scoreCache.get(key);
+			if (cached === undefined) {
+				uncached.push(item);
+			} else {
+				scores.set(item, cached);
+			}
+		}
+		if (uncached.length === 0) return scores;
+
 		const root: TokenTrieNode = {
 			children: new Map(),
 			items: [],
 			maxPrescore: -Infinity,
 		};
-		for (const item of scored) {
+		for (const item of uncached) {
 			let node = root;
 			node.maxPrescore = Math.max(node.maxPrescore, item.prescore);
 			for (const token of item.tokens) {
@@ -524,7 +565,6 @@ export class DictLlm implements CandidateAlgorithm {
 			node.items.push(item);
 		}
 
-		const scores = new Map<ScoredDraft, number>();
 		const base = session.committedLength;
 		let evalTokens = 0;
 		const limited =
@@ -605,6 +645,18 @@ export class DictLlm implements CandidateAlgorithm {
 				]);
 			}
 		}
+
+		if (
+			this.scoreCache.size + scores.size >
+			DictLlm.MAX_SCORE_CACHE
+		) {
+			this.scoreCache.clear();
+		}
+		for (const [item, score] of scores) {
+			if (item.tokens.length > 0) {
+				this.scoreCache.set(item.tokens.join(","), score);
+			}
+		}
 		return scores;
 	}
 
@@ -658,7 +710,7 @@ export class DictLlm implements CandidateAlgorithm {
 			}
 			const scores = await this.scoreDrafts(scored, baseProbs, session);
 
-			const results: Candidate[] = [];
+			const results: EvaluatedCandidate[] = [];
 			try {
 				for (const item of scored) {
 					if (item.tokens.length === 0) continue;
@@ -675,15 +727,21 @@ export class DictLlm implements CandidateAlgorithm {
 							Math.max(1, item.draft.words.length));
 
 					results.push({
-						word: item.draft.word,
-						pinyin: item.draft.pinyin,
-						remainkeys: item.draft.remainkeys,
-						preedit: item.draft.preedit,
-						consumedkeys: item.draft.consumedkeys,
-						score:
-							logprob / Math.max(1, item.draft.end) +
-							this.options.coverageBonus * coverage +
-							dictPrior,
+						long: item.draft.words.length > 1,
+						full: item.draft.end === input.length,
+						candidate: {
+							word: item.draft.word,
+							pinyin: item.draft.pinyin,
+							remainkeys: item.draft.remainkeys,
+							preedit: item.draft.preedit,
+							consumedkeys: item.draft.consumedkeys,
+							score:
+								logprob / Math.max(1, item.draft.end) +
+								this.options.coverageBonus * coverage +
+								dictPrior -
+								this.options.selectionPenalty *
+									item.draft.remainkeys.length,
+						},
 					});
 				}
 			} finally {
@@ -698,8 +756,48 @@ export class DictLlm implements CandidateAlgorithm {
 				session.resetIdleOmit();
 			}
 
-			return results.sort((a, b) => b.score - a.score);
+			return this.applyLongPolicy(results);
 		});
+	}
+
+	/**
+	 * 只让少量长句候选留在前面，其余长句移到词语候选之后。
+	 * 避免一个错误长句把 Top5 全部占满。
+	 */
+	private applyLongPolicy(items: EvaluatedCandidate[]) {
+		const sorted = [...items].sort(
+			(a, b) => b.candidate.score - a.candidate.score,
+		);
+
+		// 完整覆盖的候选只差一点时，优先让它出现在第一。
+		const best = sorted[0]?.candidate.score ?? -Infinity;
+		const fullIndex = sorted.findIndex(
+			(item) =>
+				item.full &&
+				item.candidate.score >=
+					best - this.options.coverageFirstWithin,
+		);
+		if (fullIndex > 0) {
+			const [full] = sorted.splice(fullIndex, 1);
+			sorted.unshift(full);
+		}
+
+		const keep: EvaluatedCandidate[] = [];
+		const restLong: EvaluatedCandidate[] = [];
+		let longCount = 0;
+		for (const item of sorted) {
+			if (!item.long) {
+				keep.push(item);
+				continue;
+			}
+			if (longCount < this.options.maxLongCandidates) {
+				longCount++;
+				keep.push(item);
+			} else {
+				restLong.push(item);
+			}
+		}
+		return [...keep, ...restLong].map((item) => item.candidate);
 	}
 
 	private prescore(
@@ -718,7 +816,8 @@ export class DictLlm implements CandidateAlgorithm {
 		return (
 			draft.draftScore +
 			coverage * this.options.coverageBonus +
-			dictPrior +
+			dictPrior -
+			this.options.selectionPenalty * draft.remainkeys.length +
 			0.05 * Math.log(firstProbability + 1e-12)
 		);
 	}
@@ -727,11 +826,33 @@ export class DictLlm implements CandidateAlgorithm {
 /** 完整长句评估预设：慢，但保留整句后缀信息。 */
 export function createQualityDictLlm(options: DictLlmOptions = {}) {
 	return new DictLlm({
+		id: "dict-llm-v1-quality",
+		label: "词库 + LLM 评估（质量）",
 		maxEvalTokens: Infinity,
 		maxInputSyllables: Infinity,
 		useCommitDistribution: false,
 		topK: 200,
+		maxWords: 5,
+		maxMatchesPerPosition: 30,
+		maxPathsPerPosition: 4096,
+		maxSentenceDrafts: 300,
+		maxSingleDrafts: 200,
+		maxEvaluate: 24,
 		maxSafetyCandidates: 32,
+		deterministicMaxSyllables: 8,
+		...options,
+	});
+}
+
+/** 质量模式的受限 N-best 版本：保留长句评估，但固定候选数和 token 预算。 */
+export function createOptimizedDictLlm(options: DictLlmOptions = {}) {
+	return createQualityDictLlm({
+		id: "dict-llm-v1-quality-opt",
+		label: "词库 + LLM 评估（质量优化）",
+		maxEvaluate: 4,
+		maxSafetyCandidates: 32,
+		maxEvalTokens: 48,
+		beamWidth: 8,
 		...options,
 	});
 }

@@ -1,4 +1,8 @@
-import { createQualityDictLlm, DictLlm } from "./dict-llm.ts";
+import {
+	createOptimizedDictLlm,
+	createQualityDictLlm,
+	DictLlm,
+} from "./dict-llm.ts";
 import { LimeV1 } from "./lime-v1.ts";
 import type { AlgorithmFactory, CandidateAlgorithm } from "./types.ts";
 
@@ -8,6 +12,8 @@ export const algorithmFactories = {
 	"lime-v1": (): CandidateAlgorithm => new LimeV1(),
 	"dict-llm-v1": (): CandidateAlgorithm => new DictLlm(),
 	"dict-llm-v1-quality": (): CandidateAlgorithm => createQualityDictLlm(),
+	"dict-llm-v1-quality-opt": (): CandidateAlgorithm =>
+		createOptimizedDictLlm(),
 } satisfies Record<string, AlgorithmFactory>;
 
 export type AlgorithmId = keyof typeof algorithmFactories;
